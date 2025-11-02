@@ -1,3 +1,5 @@
+name: Deploy to ZAP Hosting
+
 on:
   push:
     branches: [ main ]
@@ -16,8 +18,7 @@ name: Upload to ZAP via SFTP
       with:
         server: ${{ secrets.ZAP_HOST }}
         username: ${{ secrets.ZAP_USER }}
-        password: ${{ secrets.ZAP_PASSWORD }}
-     
+        password: ${{ secrets.ZAP_PASSWOED }}
         server-dir: /gta5-fivem/server-data/resources
         local-dir: ./resources
         protocol: sftp

@@ -20,4 +20,4 @@ jobs:
           password: ${{ secrets.ZAP_PASSWORD }}
           server-dir: /gta5-fivem/server-data/resources
           local-dir: ./resources
-          protocol: sftp
+          protocol: ftp 

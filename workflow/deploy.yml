@@ -8,17 +8,16 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      
-name: Checkout repo
-      uses: actions/checkout@v4,
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      
-name: Upload to ZAP via SFTP
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.2
-      with:
-        server: ${{ secrets.ZAP_HOST }}
-        username: ${{ secrets.ZAP_USER }}
-        password: ${{ secrets.ZAP_PASSWOED }}
-        server-dir: /gta5-fivem/server-data/resources
-        local-dir: ./resources
-        protocol: sftp
+      - name: Upload to ZAP via SFTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.2
+        with:
+          server: ${{ secrets.ZAP_HOST }}
+          username: ${{ secrets.ZAP_USER }}
+          password: ${{ secrets.ZAP_PASS }}
+          server-dir: /gta5-fivem/server-data/resources
+          local-dir: ./resources
+          port: 21
+          protocol: ftp

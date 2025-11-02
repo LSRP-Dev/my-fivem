@@ -18,6 +18,6 @@ jobs:
           username: ${{ secrets.ZAP_USER }}
           password: ${{ secrets.ZAP_PASS }}
           server-dir: /gta5-fivem/server-data/resources
-          local-dir: ./resources
+          local-dir: ./resources/
           port: 21
           protocol: ftp

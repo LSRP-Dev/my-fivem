@@ -15,9 +15,9 @@ jobs:
       - name: Upload to ZAP via SFTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.2
         with:
-          server: ${{ secrets.ZAP_HOST }}
-          username: ${{ secrets.ZAP_USER }}
-          password: ${{ secrets.ZAP_PASSWORD }}
+          server: ${{ secrets.ZAP HOST }}
+          username: ${{ secrets.ZAP USER }}
+          password: ${{ secrets.ZAP PASSWORD }}
           server-dir: /gta5-fivem/server-data/resources
           local-dir: ./resources
           protocol: sftp

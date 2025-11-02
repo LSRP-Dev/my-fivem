@@ -17,7 +17,7 @@ jobs:
           server: ${{ secrets.ZAP_HOST }}
           username: ${{ secrets.ZAP_USER }}
           password: ${{ secrets.ZAP_PASS }}
-          server-dir: /fivem/Qbox_052EBB.base/resources/
-          local-dir: ./resources/
+          server-dir: /Qbox_052EBB.base/resources/
+          local-dir: ./resource/
           port: 21
           protocol: ftp

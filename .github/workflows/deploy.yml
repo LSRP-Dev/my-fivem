@@ -21,3 +21,11 @@ jobs:
           local-dir: ./resources/
           port: 21
           protocol: ftp
+          # 🧹 Automatically remove deleted files/folders on next deploy
+          dangerous-clean-slate: true
+          # 🚀 Optional – speeds up uploads by skipping identical files
+          exclude: |
+            **/.git*
+            **/.github*
+            **/node_modules/**
+            **/README.md

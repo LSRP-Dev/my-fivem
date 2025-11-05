@@ -1,4 +1,4 @@
-QBCore = exports["qb-core"]:GetCoreObject()
+QBCore = exports["qbx_core"]:GetCoreObject()
 
 -- SERVER COMPATIBILITY LAYER
 if (IsDuplicityVersion()) then

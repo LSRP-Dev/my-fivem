@@ -10,7 +10,7 @@
  * Copyright 2011-2021 Twitter, Inc.
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/main/LICENSE)
  */
-:root {
+ :root {
   --blue: #4e73df;
   --indigo: #6610f2;
   --purple: #6f42c1;
@@ -9882,6 +9882,24 @@ a:focus {
   background-size: cover;
 }
 
+.bg-gradient-night {
+  background-color: rgb(5,0,93);
+  background-image: linear-gradient(0deg, rgba(0,110,132,1) 0%, rgba(5,0,93,1) 100%);
+  background-size: cover;
+}
+
+.bg-gradient-purple {
+  background-color: rgb(173,0,168);
+  background-image: linear-gradient(0deg, rgba(173,0,168,1) 0%, rgba(138,0,185,1) 100%);
+  background-size: cover;
+}
+
+.bg-gradient-gold {
+  background-color: rgb(105,111,0);
+  background-image: linear-gradient(180deg, rgba(105,111,0,1) 0%, rgba(209,131,0,1) 100%);
+  background-size: cover;
+}
+
 .bg-gray-100 {
   background-color: #f8f9fc !important;
 }
@@ -10469,7 +10487,7 @@ a:focus {
     display: block;
     width: 100%;
     text-align: left;
-    padding: 1rem !important;
+    padding-left: 1rem !important;
     width: 14rem;
   }
   .sidebar .nav-item .nav-link i {
@@ -10555,7 +10573,11 @@ a:focus {
     display: none;
   }
   .sidebar.toggled .sidebar-heading {
-    text-align: center;
+    display:none;
+  }
+
+  .sidebar.toggled .sidebar-divider {
+    display:none;
   }
 }
 

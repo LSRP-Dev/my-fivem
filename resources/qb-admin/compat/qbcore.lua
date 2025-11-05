@@ -22,7 +22,7 @@ end
 
 -- Callbacks
 QBCore.Functions.CreateCallback = function(name, cb)
-    return QBX:RegisterCallback(name, cb)
+    return QBX:AddCallback(name, cb)
 end
 
 QBCore.Functions.TriggerCallback = function(name, src, cb, ...)

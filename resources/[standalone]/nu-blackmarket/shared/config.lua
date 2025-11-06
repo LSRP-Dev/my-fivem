@@ -7,7 +7,7 @@ Config.Debug = true
 -- Ped Configuration
 Config.Ped = {
     model = `g_m_m_chigoon_01`, -- Black market dealer ped model
-    coords = vector4(-1187.5, -1500.2, 4.4, 125.0), -- Default location (can be changed)
+    coords = vector4(-75.0, -818.0, 327.5, 70.0), -- Default location (can be changed)
     scenario = "WORLD_HUMAN_SMOKING", -- Ped animation/scenario
     freeze = true, -- Should the ped be frozen in place
     invincible = true, -- Should the ped be invincible

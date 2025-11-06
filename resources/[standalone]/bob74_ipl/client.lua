@@ -242,3 +242,22 @@ CreateThread(function()
         MoneyConstruction.LoadDefault()
     end
 end)
+-- Force enable Bolingbroke Prison
+Citizen.CreateThread(function()
+    local prisonIPLs = {
+        "prison_int",
+        "prison_int_main",
+        "prison_int_01",
+        "prison_int_02",
+        "prison_int_03",
+        "prison_int_04",
+        "prison_int_05",
+        "prison_int_06",
+        "prison_int_07"
+    }
+
+    for _, ipl in ipairs(prisonIPLs) do
+        RequestIpl(ipl)
+        print("[bob74_ipl] Requested IPL: " .. ipl)
+    end
+end)

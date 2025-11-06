@@ -8,8 +8,8 @@ Config.Inventory                            = "autodetect"              -- "auto
 
 Config.DefaultDarkMode                      = 1                         -- Whether dark mode should be enabled by default. 1 is on by default, 0 is off
 
-Config.ServerName                           = "New Dawn RP"
-Config.ServerDiscord                        = "https://discord.gg/nd-rp"                        -- For kick/ban messages
+Config.ServerName                           = ""
+Config.ServerDiscord                        = ""                        -- For kick/ban messages
 
 Config.NoClipKey                            = "INSERT"                  -- The default key to start noclip
 Config.AdminPanelKey                        = "PAGEDOWN"                -- The default key to open the admin panel

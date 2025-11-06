@@ -7,13 +7,20 @@ local maps = {
 }
 
 CreateThread(function()
-    Wait(5000) -- wait 5 seconds after startup
+    Wait(8000) -- wait 8 seconds for other scripts to load
     for _, map in ipairs(maps) do
-        if not GetResourceState(map):find("start") then
-            print(("[Mapforcer] Starting missing map: %s"):format(map))
-            ExecuteCommand(("start %s"):format(map))
+        local state = GetResourceState(map)
+        if not state:find("start") then
+            print(("[Mapforcer] Attempting to start missing map: %s (current state: %s)"):format(map, state))
+            local success = StartResource(map)
+            if success then
+                print(("[Mapforcer] ✅ Successfully started %s"):format(map))
+            else
+                print(("[Mapforcer] ❌ Failed to start %s"):format(map))
+            end
         else
-            print(("[Mapforcer] Map already running: %s"):format(map))
+            print(("[Mapforcer] ✅ Map already running: %s"):format(map))
         end
     end
+    print("[Mapforcer] Check complete.")
 end)

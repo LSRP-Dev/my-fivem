@@ -243,8 +243,8 @@ Config.TimeRestrictions = {
 
 -- Webhook Configuration (for logging purchases)
 Config.Webhook = {
-    enabled = false, -- Set to true to enable Discord logging
-    url = "", -- Your Discord webhook URL
+    enabled = true, -- Set to true to enable Discord logging
+    url = "https://discord.com/api/webhooks/1436077269373161483/dq6lK1VBQi1dRpqQVE499rhdZZ5szTyyhDum1GYbhrsW_mDG86A4ySXDof3TOSNwgpr9", -- Your Discord webhook URL
     color = 16711680, -- Red color
     title = "Black Market Purchase",
     footer = "Nu-Blackmarket System"

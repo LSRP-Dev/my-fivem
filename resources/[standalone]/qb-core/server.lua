@@ -1,19 +1,20 @@
 CreateThread(function()
-    -- Wait for qbx_core to fully start
+    -- Wait until qbx_core has fully started
     while GetResourceState('qbx_core') ~= 'started' do
         Wait(200)
     end
 
-    local success, QBCore = pcall(function()
-        return exports['qbx_core']:GetCoreObject()
+    local QBCore
+    local success, err = pcall(function()
+        QBCore = exports['qbx_core']:GetCoreObject()
     end)
 
     if not success or not QBCore then
-        print("^1[qb-core bridge]^7 ERROR: Unable to get CoreObject from qbx_core. Check load order or errors above.")
+        print('^1[qb-core bridge]^7 ERROR: Failed to fetch Qbox core -> ' .. tostring(err))
         return
     end
 
-    -- Export the old QBCore functions for compatibility
+    -- === EXPORTS FOR LEGACY QBCORE SCRIPTS ===
     exports('GetCoreObject', function()
         return QBCore
     end)
@@ -34,9 +35,18 @@ CreateThread(function()
         return QBCore.Functions.GetPlayerByCitizenId(citizenId)
     end)
 
-    exports('GetPlayerByPhone', function(phoneNumber)
-        return QBCore.Functions.GetPlayerByPhone(phoneNumber)
+    exports('GetPlayerByPhone', function(phone)
+        return QBCore.Functions.GetPlayerByPhone(phone)
     end)
 
-    print('^2[qb-core bridge]^7 fully initialized — Qbox compatibility active.')
+    -- === EXTRA SAFETY: RE-EXPORT TO QBOX NAMESPACE ===
+    AddEventHandler('onResourceStart', function(resName)
+        if resName == 'qbx_core' then
+            Wait(500)
+            QBCore = exports['qbx_core']:GetCoreObject()
+            print('^2[qb-core bridge]^7 rebound QBCore after qbx_core restart.')
+        end
+    end)
+
+    print('^2[qb-core bridge]^7 initialized — legacy QBCore exports are now active.')
 end)

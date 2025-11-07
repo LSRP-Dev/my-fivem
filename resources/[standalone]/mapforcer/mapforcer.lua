@@ -4,7 +4,11 @@ local maps = {
     'new_map',
     'Ricky-VinewoodSign',
     'patoche_free_cardealer',
-    'anarchy_Cardealer'
+    'anarchy_Cardealer',
+    'anarchy_MRPD',
+    'anarchy_underground',
+    'anarchy_Unicorn',
+    'anarchy_Unicorn'
 }
 
 CreateThread(function()

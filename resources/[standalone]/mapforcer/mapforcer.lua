@@ -8,7 +8,10 @@ local maps = {
     'anarchy_MRPD',
     'anarchy_underground',
     'anarchy_Unicorn',
-    'anarchy_LsCustoms'
+    'anarchy_LsCustoms',
+    'jpr-casinosystem',
+    'jpr-libs',
+    'DLCiplLoader'
 }
 
 CreateThread(function()

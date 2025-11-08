@@ -1,49 +1,60 @@
-local QBCore = exports['qbx_core']:GetCoreObject()
+local QBCore
+local coreRes -- 'qbx_core' or 'qb-core'
 
--- Make GetCoreObject export work for older qb scripts
-exports('GetCoreObject', function()
-    return QBCore
-end)
+local function tryGetCore(res, fnName)
+    local ok, obj = pcall(function()
+        return exports[res][fnName] and exports[res][fnName](exports[res]) or nil
+    end)
+    return ok and obj or nil
+end
 
--- 🏎️ Spawn vehicle (used by qb-admin)
-RegisterNetEvent('QBCore:Server:SpawnVehicle', function(model)
-    local src = source
-    local ped = GetPlayerPed(src)
-    local coords = GetEntityCoords(ped)
-    local heading = GetEntityHeading(ped)
-    local vehicle = CreateVehicle(model, coords.x, coords.y, coords.z, heading, true, false)
-    SetVehicleNumberPlateText(vehicle, "ADMIN")
-    TaskWarpPedIntoVehicle(ped, vehicle, -1)
-    print(("[qb-core-bridge] Spawned vehicle: %s for %s"):format(model, GetPlayerName(src)))
-end)
+CreateThread(function()
+    -- wait for either core to actually be started
+    while true do
+        if GetResourceState('qbx_core') == 'started' then
+            coreRes = 'qbx_core'
+        elseif GetResourceState('qb-core') == 'started' then
+            coreRes = 'qb-core'
+        end
 
--- 🎒 Give item (used by qb-admin)
-RegisterNetEvent('QBCore:Server:AddItem', function(item, amount)
-    local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
-    if Player then
-        Player.Functions.AddItem(item, amount or 1)
-        TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[item], 'add')
-        print(("[qb-core-bridge] Gave %s x%d to %s"):format(item, amount or 1, GetPlayerName(src)))
-    else
-        print("^1[qb-core-bridge]^7 Failed to give item — player not found.")
+        if coreRes then
+            -- try both common export names, tolerate different cores
+            QBCore = tryGetCore(coreRes, 'GetCoreObject') or tryGetCore(coreRes, 'GetQBCoreObject')
+            if QBCore then
+                print(('[qb-core-bridge] Hooked %s successfully.'):format(coreRes))
+                break
+            end
+        end
+
+        Wait(500)
     end
+
+    print('[qb-core-bridge] Ready — waiting for qb-admin requests.')
 end)
 
--- 💰 Give money
-RegisterNetEvent('QBCore:Server:AddMoney', function(type, amount)
+-- ===========
+--  VEHICLES
+-- ===========
+
+-- qb-admin (legacy) calls this; we forward to client to actually spawn.
+RegisterNetEvent('QBCore:Server:SpawnVehicle', function(model, plate, props)
     local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
-    if Player then
-        Player.Functions.AddMoney(type or 'cash', amount or 0)
-    end
+    TriggerClientEvent('qb-core-bridge:client:spawnVehicle', src, model, plate, props)
+    print(('[qb-core-bridge] SpawnVehicle -> %s %s'):format(tostring(model), tostring(plate)))
 end)
 
--- ☀️ Set weather (for menu weather control)
-RegisterNetEvent('QBCore:Server:SetWeather', function(weatherType)
-    if GetResourceState('Renewed-Weathersync') == 'started' then
-        TriggerEvent('Renewed:server:setWeather', weatherType)
-    end
-end)
+-- ===========
+--   ITEMS
+-- ===========
 
-print("^3[qb-core-bridge]^7 Loaded successfully — waiting for qb-admin requests.")
+-- Give item to target id (admin menu usually passes these)
+RegisterNetEvent('QBCore:Server:AddItem', function(target, name, amount, slot, info)
+    if not QBCore then return end
+    local Player = QBCore.Functions.GetPlayer(tonumber(target))
+    if not Player then return end
+    local ok = Player.Functions.AddItem(name, tonumber(amount or 1), slot, info)
+    if ok then
+        TriggerClientEvent('inventory:client:ItemBox', Player.PlayerData.source, QBCore.Shared.Items[name], "add", tonumber(amount or 1))
+    end
+    print(('[qb-core-bridge] AddItem -> id:%s item:%s x%s'):format(target, name, amount or 1))
+end)

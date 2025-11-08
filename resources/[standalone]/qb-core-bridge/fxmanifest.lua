@@ -1,8 +1,10 @@
 fx_version 'cerulean'
 game 'gta5'
 
-author 'Chris (QBOX Compatibility)'
-description 'Bridge for qb-admin and legacy qb-core events'
-version '1.0.0'
+name 'qb-core-bridge'
+author 'Chris / 919'
+description 'Compatibility bridge for qb-admin on Qbox/qb-core'
+version '1.1.0'
 
 server_script 'server.lua'
+client_script 'client.lua'

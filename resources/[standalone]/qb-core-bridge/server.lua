@@ -58,3 +58,30 @@ RegisterNetEvent('QBCore:Server:AddItem', function(target, name, amount, slot, i
     end
     print(('[qb-core-bridge] AddItem -> id:%s item:%s x%s'):format(target, name, amount or 1))
 end)
+RegisterNetEvent('qb-core-bridge:client:spawnVehicle', function(model, plate, props)
+    local playerPed = PlayerPedId()
+    local pos = GetEntityCoords(playerPed)
+    local heading = GetEntityHeading(playerPed)
+
+    if not IsModelInCdimage(model) or not IsModelAVehicle(model) then
+        print(("[qb-core-bridge] Invalid vehicle model: %s"):format(model))
+        return
+    end
+
+    RequestModel(model)
+    while not HasModelLoaded(model) do
+        Wait(0)
+    end
+
+    local veh = CreateVehicle(model, pos.x + 2.0, pos.y, pos.z, heading, true, false)
+    SetPedIntoVehicle(playerPed, veh, -1)
+    SetVehicleNumberPlateText(veh, plate or "ADMIN")
+    SetEntityAsMissionEntity(veh, true, true)
+
+    if props then
+        QBCore.Functions.SetVehicleProperties(veh, props)
+    end
+
+    SetModelAsNoLongerNeeded(model)
+    print(("[qb-core-bridge] Vehicle spawned: %s"):format(model))
+end)

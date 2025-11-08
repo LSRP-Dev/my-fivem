@@ -663,4 +663,14 @@ RegisterNetEvent("919-admin:server:GetPlayersForBlips", function()
         PlayersB = tempPlayers
         TriggerClientEvent("919-admin:client:Show", src, PlayersB)
     end
+    -- ✅ Bridge: handle QBCore legacy vehicle spawn for QBox
+RegisterNetEvent('QBCore:Server:SpawnVehicle', function(model, plate, props)
+    local src = source
+    if not model then
+        print("[919ADMIN][QBox Bridge] Missing vehicle model argument!")
+        return
+    end
+    print(("[919ADMIN][QBox Bridge] Spawning vehicle '%s' for %s"):format(model, src))
+    TriggerClientEvent('919-admin:client:spawnVehicle', src, model, plate or "ADMIN", props or {})
+end)
 end)

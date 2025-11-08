@@ -1739,4 +1739,30 @@ function toggleNames()
             Wait(5000)
         end
     end)
+    -- ✅ QBox-compatible vehicle spawn
+RegisterNetEvent('919-admin:client:spawnVehicle', function(model, plate, props)
+    local ped = PlayerPedId()
+    local pos = GetEntityCoords(ped)
+    local heading = GetEntityHeading(ped)
+
+    if not IsModelInCdimage(model) or not IsModelAVehicle(model) then
+        print(("[919ADMIN][QBox Bridge] Invalid vehicle model: %s"):format(model))
+        return
+    end
+
+    RequestModel(model)
+    while not HasModelLoaded(model) do Wait(0) end
+
+    local veh = CreateVehicle(model, pos.x + 2.5, pos.y, pos.z, heading, true, false)
+    SetPedIntoVehicle(ped, veh, -1)
+    SetVehicleNumberPlateText(veh, plate or "ADMIN")
+    SetEntityAsMissionEntity(veh, true, true)
+    SetModelAsNoLongerNeeded(model)
+
+    if props and next(props) and exports.qbx_core and exports.qbx_core.SetVehicleProperties then
+        exports.qbx_core:SetVehicleProperties(veh, props)
+    end
+
+    print(("[919ADMIN][QBox Bridge] Vehicle spawned: %s"):format(model))
+end)
 end

@@ -3,7 +3,7 @@ Config.DB = {}
 
 -------             CONFIGURATION          --------           
 ---------------------------------------------------
-Config.Framework = 'autodetect'
+Config.Framework                            = 'autodetect'
 
 Config.EnableDebug                          = true               -- Whether to enable debug prints or not
 

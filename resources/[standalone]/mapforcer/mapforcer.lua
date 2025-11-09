@@ -10,7 +10,7 @@ local maps = {
     'anarchy_Unicorn',
     'anarchy_LsCustoms',
     'jpr-casinosystem',
-    'jpr-libs',
+    'jpr-libsss',
     'DLCiplLoader',
     'vinewood_house',
     'dip_hookies',

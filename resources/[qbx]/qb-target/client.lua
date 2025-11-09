@@ -32,10 +32,6 @@ local pcall = pcall
 local CheckOptions = CheckOptions
 local Bones = Load('bones')
 local listSprite = {}
-local function qbShouldDrawEye()
-    return GetConvarInt('qb_target:drawSprite', 1) == 1
-end
-
 
 ---------------------------------------
 --- Source: https://github.com/citizenfx/lua/blob/luaglm-dev/cfx/libs/scripts/examples/scripting_gta.lua
@@ -95,8 +91,8 @@ local function DrawTarget()
 				end
 
 				SetDrawOrigin(zone.center.x, zone.center.y, zone.center.z, 0)
-				if qbShouldDrawEye() then
-    DrawSprite('shared', 'emptydot_32', 0.0, 0.0, 0.01, 0.02, 0.0, r, g, b, a)
+                DrawSprite('shared', 'emptydot_32', 0.0, 0.0, 0.01, 0.02, 0.0, r, g, b, a)
+				ClearDrawOrigin()
 end
 			Wait(sleep)
 		end

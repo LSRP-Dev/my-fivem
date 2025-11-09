@@ -1,4 +1,5 @@
--- Qbox / QB-Core bridge for server functions
+-- JPR Phone System - Server Config for QBOX Core
+
 local QBCore = nil
 
 if GetResourceState('qbx_core') == 'started' then
@@ -6,17 +7,18 @@ if GetResourceState('qbx_core') == 'started' then
         QBCore = QBX
         print("^2[JPR Phone] Server Config using QBOX Core (qbx_core)^0")
     else
-        print("^1[JPR Phone] qbx_core detected but QBX global missing!^0")
+        print("^1[JPR Phone] qbx_core started but QBX global not found!^0")
+        QBCore = {}
     end
 elseif GetResourceState('qb-core') == 'started' then
     QBCore = exports['qb-core']:GetCoreObject()
     print("^2[JPR Phone] Server Config using QB-Core^0")
 else
-    print("^1[JPR Phone] No framework found for server config (qbx_core/qb-core)^0")
+    print("^1[JPR Phone] No framework found (qbx_core or qb-core)^0")
+    QBCore = {}
 end
 
 return QBCore
-
 
 -- Alias for backward compatibility (so the rest of the script works)
 QBCore = Framework

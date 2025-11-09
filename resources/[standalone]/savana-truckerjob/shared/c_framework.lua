@@ -45,25 +45,23 @@ function Framework:SpawnClear(data,count)
 end
 
 loadVehicle = function(vehicle, coords, heading)
-
-    local model
-    if type(vehicle) == 'number' then 
-        model = vehicle 
-    else 
-        model = GetHashKey(vehicle) 
-    end
-    while not HasModelLoaded(model) do 
-        Wait(0) 
-        RequestModel(model) 
+    local model = vehicle or 'mule' -- default truck model
+    if type(model) ~= 'number' then
+        model = GetHashKey(model)
     end
 
-    local car = CreateVehicle(model, coords.x,coords.y,coords.z, heading, true, false)
-    SetEntityAsMissionEntity(car, true, true)
-    
-    TriggerEvent("vehiclekeys:client:SetOwner", GetVehicleNumberPlateText(car))
-    fuel(car)
-    return car
-end
+    -- Load model
+    RequestModel(model)
+    local timeout = 0
+    while not HasModelLoaded(model) and timeout < 100 do
+        Wait(50)
+        timeout = timeout + 1
+    end
+
+    if not HasModelLoaded(model) then
+        print('[TruckerJob]  Failed to load model:', vehicle)
+        return nil
+    end
 
 function fuel(car)
     if GetResourceState('savana-fuel') == 'started' then

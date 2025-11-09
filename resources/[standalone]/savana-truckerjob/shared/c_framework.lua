@@ -1,5 +1,8 @@
 Framework = {}
-currentZone = nil
+currentZone = nil#
+print("[Trucker job debug]
+c_frmaework.lua loaded")
+
 
 if GetResourceState('qbx_core') == 'started' then
     shared.Framework = "qb"

@@ -1,4 +1,18 @@
-local QBCore                  = exports[Config.CoreName]:GetCoreObject()
+-- Qbox / QB-Core Auto Framework Bridge
+
+local Framework = nil
+
+-- Try to detect which core is running
+if GetResourceState('qbx_core') == 'started' then
+    Framework = exports['qbx_core']:GetCoreObject()
+elseif GetResourceState('qb-core') == 'started' then
+    Framework = exports['qb-core']:GetCoreObject()
+else
+    print('^1[JPR Phone] Framework not found (qbx_core or qb-core missing!)^0')
+end
+
+-- Alias for backward compatibility (so the rest of the script works)
+QBCore = Framework
 
 function PayToSociety(society, amount, senderCitizenid)
     if not Config.DisableQBMagementExports then

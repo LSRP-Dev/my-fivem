@@ -81,17 +81,17 @@ local function DrawTarget()
 				r = zone.targetoptions.drawColor?[1] or Config.DrawColor[1]
 				g = zone.targetoptions.drawColor?[2] or Config.DrawColor[2]
 				b = zone.targetoptions.drawColor?[3] or Config.DrawColor[3]
-				a = zone.targetoptions.drawColor?[4] or Config.DrawColor[4]
+				a = 0
 
 				if zone.success then
 					r = zone.targetoptions.successDrawColor?[1] or Config.SuccessDrawColor[1]
 					g = zone.targetoptions.successDrawColor?[2] or Config.SuccessDrawColor[2]
 					b = zone.targetoptions.successDrawColor?[3] or Config.SuccessDrawColor[3]
-					a = zone.targetoptions.successDrawColor?[4] or Config.SuccessDrawColor[4]
+					a = 0
 				end
 
 				SetDrawOrigin(zone.center.x, zone.center.y, zone.center.z, 0)
-				DrawSprite('shared', 'emptydot_32', 0, 0, 0.01, 0.02, 0, r, g, b, 0)
+				DrawSprite('shared', 'emptydot_32', 0, 0, 0.01, 0.02, 0, r, g, b, a)
 				ClearDrawOrigin()
 			end
 			Wait(sleep)

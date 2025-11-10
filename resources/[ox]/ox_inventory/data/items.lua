@@ -834,4 +834,28 @@ return {
     close = true,
     description = 'Refresh yourself with some water.'
 },
+
+    ['casinochips'] = {
+        label = 'Casino Chips',
+        weight = 0,
+        stack = true,
+        close = true,
+        description = 'Casino chips used for gambling.'
+    },
+
+    ['casino_member'] = {
+        label = 'Casino Member Card',
+        weight = 10,
+        stack = false,
+        close = true,
+        description = 'A membership card for the Diamond Casino.'
+    },
+
+    ['casino_vip'] = {
+        label = 'Casino VIP Card',
+        weight = 10,
+        stack = false,
+        close = true,
+        description = 'A VIP membership card for the Diamond Casino.'
+    },
 }

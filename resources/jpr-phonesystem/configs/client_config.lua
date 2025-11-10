@@ -1,8 +1,4 @@
-if GetResourceState('qbx_core') == 'started' then
-    Framework = exports['qbx_core'] and exports['qbx_core']:GetCoreObject and exports['qbx_core']:GetCoreObject() or QBX
-
-
-return Framework
+local QBCore                  = exports[Config.CoreName]:GetCoreObject()
 
 function VehicleKeys(plate, vehicle)
     Citizen.Wait(1000) -- leave this

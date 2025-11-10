@@ -11,38 +11,35 @@ Keys = {
 
 Config = {}
 
-Config.CoreName = "qbx-core"
-Config.WeatherScript = false
-Config.RepeatTimeout = 4000
-Config.CallRepeats = 10
-Config.VoiceScript = "pma"  -- using pma-voice
-Config.EmailDomain = "@cozycity.uk"
-Config.JobManageScript = "qbx-management"
+Config.CoreName = "qb-core"
+Config.WeatherScript = "qb-weathersync" --- if you renamed your qb-weathersync need to replace this, if dont use qb-weathersync put Config.WeatherScript = false
+Config.RepeatTimeout = 4000 --- Depends of ringtone
+Config.CallRepeats = 10 --- Depends of ringtone
+Config.VoiceScript = "pma"  -- pma, mumble, salty, tokovoip
+Config.EmailDomain = "@jpresources.com"
+Config.JobManageScript = "qb-management"
 Config.ScreenScript = "screenshot-basic"
-Config.AddVerifiedInstagramCommand = "verifiedInstagram"
-Config.AddVerifiedTwitterCommand = "verifiedTwitter"
-Config.AddVerifiedTiktokCommand = "verifiedTiktok"
+Config.AddVerifiedInstagramCommand = "verifiedInstagram" -- account id, true or false
+Config.AddVerifiedTwitterCommand = "verifiedTwitter" -- account id, true or false
+Config.AddVerifiedTiktokCommand = "verifiedTiktok" -- account id, true or false
 Config.BillingCommand = "sendbill"
 Config.AllowKeyMapping = true
 Config.PreLoadPhone = true
-Config.DefaultKey = 'M'
+Config.DefaultKey = 'M' -- you need to have phone item on first slot
 Config.CloseAndOpenPhoneWithSameKey = false
-Config.Inventory = "ox_inventory"
+Config.Inventory = "qb-inventory" 
 Config.UniquePhones = true
-
--- Keep all your phone items (unchanged)
 Config.PhoneItems = {"phone", "phone_white", "phone_gold", "phone_red", "phone_blue", "phone_green", "phone_pink", "phone_green_light", "phone_purple_deep", "phone_purple"}
 Config.PhoneCases = {"phone_case_1", "phone_case_2", "phone_case_3", "phone_case_4", "phone_case_5", "phone_case_6", "phone_case_7", "phone_case_8", "phone_case_9", "phone_case_10", "phone_no_case"}
-
 Config.AnimationLib = 'cellphone@'
 Config.AnimationLibCar = 'anim@cellphone@in_car@ps'
 Config.TextingAnimation = true
 Config.ServerSidedClockMessages = true
-Config.InvoicesScript = false
-Config.ShowRealTimeOnLockScreen = false
-Config.ShowIDOnWalletAPP = false
-Config.DisableQBMagementExports = true
-Config.BankingScript = "qbx-banking"
+Config.InvoicesScript = false -- just in case you have a custom invoices script, if you are using okokBilling, set this to "okokBilling"
+Config.ShowRealTimeOnLockScreen = false -- if false, will show game date and time (great for roleplay, cause, it just makes sense).
+Config.ShowIDOnWalletAPP = false -- if false, will display IBAN of phone owner, if true will display ID of current player
+Config.DisableQBMagementExports = false -- if true, if will send bills payment through bank export, if false, will send through qb-management ( if you have latest qb-management let true, adjust Config.BankingScript and confirm export of server_config line 7)
+Config.BankingScript = "qb-banking"
 Config.CheckMaskForFaceKey = true
 
 Config.UploadSystem = {

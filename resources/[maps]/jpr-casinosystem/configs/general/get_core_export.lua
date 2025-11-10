@@ -1,8 +1,8 @@
 local QBCore = nil
 
 if GetResourceState('qbx_core') == 'started' then
-    QBCore = exports['qbx_core']:GetSharedObject() -- ✅ works in Qbox
-    print('^2[JPR Casino] Linked to QBOX Core via GetSharedObject()^0')
+    QBCore = QBX           -- ✅ Global variable (Qbox)
+    print('^2[JPR Casino] Linked to QBOX Core via global QBX^0')
 elseif GetResourceState('qb-core') == 'started' then
     QBCore = exports['qb-core']:GetCoreObject()
     print('^2[JPR Casino] Linked to QB-Core^0')

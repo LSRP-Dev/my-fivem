@@ -590,7 +590,12 @@ end)
 RegisterServerEvent("919-admin:server:RequestVehicleSpawn", function(modelName)
     local src = source
     if AdminPanel.HasPermission(src, "spawncar") then
-        TriggerClientEvent("QBCore:Command:SpawnVehicle", src, modelName)
+        -- For QBox, trigger the client event directly (bridge handles it on client)
+        if Compat and Compat.SpawnVehicle then
+            TriggerClientEvent('919-admin:client:spawnVehicle', src, modelName, "ADMIN", {})
+        else
+            TriggerClientEvent("QBCore:Command:SpawnVehicle", src, modelName)
+        end
     end
 end)
 
@@ -698,11 +703,24 @@ end)
 RegisterServerEvent("919-admin:server:GiveItem", function(targetId, item, amount)
     local src = source
     if AdminPanel.HasPermission(src, "giveitem") then
-        if QBCore then
+        if targetId == "self" or targetId == nil or targetId == "" or targetId == " " then
+            targetId = source
+        end
+        
+        -- Use Compat bridge for QBox, or QBCore directly for legacy QB
+        if Compat and Compat.AddItem then
+            -- Check if item exists using QBox exports
+            local items = exports.qbx_core:GetItemsByName()
+            if items and items[item] then
+                Compat.AddItem(tonumber(targetId), item, amount)
+                TriggerEvent("qb-log:server:CreateLog", "adminactions", "Give Item", "red", "**STAFF MEMBER " .. GetPlayerName(src) .. "** gave " .. item .. " (x" .. amount .. ") to " .. GetPlayerName(targetId), false)
+                TriggerClientEvent("919-admin:client:ShowPanelAlert", src, "success", "<strong>"..Lang:t("alerts.success").."</strong> "..Lang:t("alerts.gaveItem", {value = item}))
+                TriggerClientEvent("QBCore:Notify", targetId, Lang:t("notify.givenItem", {value = item}), "success")
+            else
+                TriggerClientEvent("919-admin:client:ShowPanelAlert", src, "danger", "<strong>"..Lang:t("alerts.error").."</strong> "..Lang:t("alerts.invalidItem"))
+            end
+        elseif QBCore then
             if QBCore.Shared.Items[item] ~= nil then
-                if targetId == "self" or targetId == nil or targetId == "" or targetId == " " then
-                    targetId = source
-                end
                 local targetPlayer = nil
                 targetPlayer = QBCore.Functions.GetPlayer(tonumber(targetId))
                 if targetPlayer then

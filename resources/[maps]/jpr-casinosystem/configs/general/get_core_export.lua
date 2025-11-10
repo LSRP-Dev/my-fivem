@@ -3,7 +3,18 @@ local Core = nil
 -- Initialize QBX and QBCore with safe placeholder structure to prevent nil errors
 -- This ensures they exist even if core isn't ready yet
 if not QBX then
-    QBX = {}
+    QBX = {
+        Functions = {
+            CreateCallback = function(...) 
+                print('^3[JPR Casino] WARNING: CreateCallback called before QBX initialized^0')
+                return nil 
+            end,
+            GetPlayer = function(...) 
+                print('^3[JPR Casino] WARNING: GetPlayer called before QBX initialized^0')
+                return nil 
+            end
+        }
+    }
 end
 if not _G.QBCore then
     _G.QBCore = {}
@@ -14,29 +25,55 @@ end
 
 -- Function to initialize core from qbx_core
 local function initQBXCore()
-    if GetResourceState('qbx_core') == 'started' then
-        local success, coreObj = pcall(function()
-            return exports['qbx_core']:GetCoreObject()
-        end)
-        
-        -- Verify that coreObj exists and has Functions before considering it initialized
-        if success and coreObj and coreObj.Functions then
+    if GetResourceState('qbx_core') ~= 'started' then
+        return false
+    end
+    
+    -- Check if export exists
+    local exportExists = pcall(function()
+        return exports['qbx_core'] ~= nil
+    end)
+    
+    if not exportExists then
+        return false
+    end
+    
+    -- Try to get the core object
+    local success, coreObj = pcall(function()
+        return exports['qbx_core']:GetCoreObject()
+    end)
+    
+    -- Verify that coreObj exists and has Functions before considering it initialized
+    if success and coreObj then
+        if coreObj.Functions then
             Core = coreObj
-            QBX = coreObj  -- Set global QBX
+            -- Only update if we got a valid core object
+            QBX = coreObj  -- Set global QBX (replaces placeholder)
             _G.QBCore = coreObj  -- ✅ backward-compatibility alias (explicit global)
             QBCore = coreObj     -- Also set without _G for compatibility
             print('^2[JPR Casino] Linked to QBOX Core via exports^0')
             return true
         else
-            if success and coreObj then
-                print('^3[JPR Casino] Warning: qbx_core object received but Functions not available yet^0')
-            else
-                print('^3[JPR Casino] Warning: qbx_core export not ready yet, will retry...^0')
+            print('^3[JPR Casino] Warning: qbx_core object received but Functions not available yet (object type: ' .. tostring(type(coreObj)) .. ')^0')
+            -- Check what properties it has
+            if type(coreObj) == 'table' then
+                local keys = {}
+                for k, v in pairs(coreObj) do
+                    table.insert(keys, tostring(k))
+                end
+                print('^3[JPR Casino] Object has keys: ' .. table.concat(keys, ', ') .. '^0')
             end
             return false
         end
+    else
+        local errMsg = "unknown error"
+        if not success then
+            errMsg = tostring(coreObj)  -- coreObj contains the error message
+        elseif not coreObj then
+            errMsg = "export returned nil"
+        end
+        return false
     end
-    return false
 end
 
 -- Function to initialize core from qb-core
@@ -59,15 +96,19 @@ end
 
 -- Try to initialize immediately with a short synchronous wait
 local initialized = false
-if GetResourceState('qbx_core') == 'started' or GetResourceState('qbx_core') == 'starting' then
+local resourceState = GetResourceState('qbx_core')
+if resourceState == 'started' or resourceState == 'starting' then
+    -- Wait a bit for the resource to fully initialize
+    Wait(1000)  -- Give qbx_core 1 second to fully initialize
+    
     -- Try a few times synchronously (with small waits) before going async
-    for i = 1, 5 do
+    for i = 1, 10 do
         if initQBXCore() then
             initialized = true
             break
         end
-        if i < 5 then
-            Wait(100)  -- Small wait between attempts
+        if i < 10 then
+            Wait(200)  -- Wait 200ms between attempts
         end
     end
 end
@@ -88,7 +129,8 @@ if not initialized then
     if GetResourceState('qbx_core') == 'starting' or GetResourceState('qbx_core') == 'started' then
         CreateThread(function()
             local attempts = 0
-            local maxAttempts = 40  -- Try for up to 20 seconds (40 * 500ms)
+            local maxAttempts = 100  -- Try for up to 50 seconds (100 * 500ms)
+            local lastWarning = 0
             
             while attempts < maxAttempts do
                 Wait(500)
@@ -98,17 +140,25 @@ if not initialized then
                     print('^2[JPR Casino] Successfully initialized QBOX Core after ' .. attempts .. ' attempts^0')
                     return  -- Successfully initialized
                 end
+                
+                -- Print progress every 10 attempts (reduced spam)
+                if attempts % 10 == 0 then
+                    print('^3[JPR Casino] Still waiting for qbx_core... (attempt ' .. attempts .. '/' .. maxAttempts .. ')^0')
+                end
             end
             
             -- If we still haven't initialized, keep placeholder structure
             if not Core or not Core.Functions then
                 print('^1[JPR Casino] ERROR: Failed to initialize QBOX Core after ' .. maxAttempts .. ' retries^0')
+                print('^1[JPR Casino] Check if qbx_core is started and the export is working^0')
+                print('^1[JPR Casino] Try: ensure qbx_core is started BEFORE jpr-casinosystem in server.cfg^0')
                 -- Keep the placeholder structure to prevent nil errors
                 Core = {}
             end
         end)
     else
         print('^1[JPR Casino] No core framework detected (qbx_core or qb-core)^0')
+        print('^1[JPR Casino] qbx_core state: ' .. tostring(GetResourceState('qbx_core')) .. '^0')
         Core = {}
         -- Keep placeholder structure for QBX and QBCore
     end

@@ -15,7 +15,7 @@ function AddMoney(Player, moneyType, amount, reason)
 end
 
 function CallBackFunction(...)
-    return QBCore.Functions.CreateCallback(...)
+    return QBX.Functions.CreateCallback(...)
 end
 
 function NotifyServer(player, message, notifyType)
@@ -23,7 +23,7 @@ function NotifyServer(player, message, notifyType)
 end
 
 function GetPlayer(source)
-    return QBCore.Functions.GetPlayer(source)
+    return QBX.Functions.GetPlayer(source)
 end
 
 function CheckMoney(source, amount)

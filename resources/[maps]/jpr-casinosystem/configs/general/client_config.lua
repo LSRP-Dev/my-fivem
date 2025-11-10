@@ -58,7 +58,7 @@ function DrawText3Ds(x, y, z, text)
 end
 
 function Notify(message, notifType)
-    QBCore.Functions.Notify(message, notifType)
+    QBX.Functions.Notify(message, notifType)
 end
 
 function RequestAnimDictCasino(anim)
@@ -76,7 +76,7 @@ function GetItemCount(item)
     if (GetResourceState("ox_inventory") == "started") then
         return exports.ox_inventory:Search('count', item) or 0
     else
-        local player = QBCore.Functions.GetPlayerData()
+        local player = QBX.Functions.GetPlayerData()
         local amount = 0
 
         for _, v in ipairs(player.items) do
@@ -131,7 +131,7 @@ function OpenSlotsMenu(options)
 end
 
 function GetVehicleProperties(...)
-    return QBCore.Functions.GetVehicleProperties(...)
+    return QBX.Functions.GetVehicleProperties(...)
 end
 
 function SpawnVehicle(vehInfo, coords, warp)

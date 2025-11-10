@@ -1,14 +1,13 @@
--- QBOX / QB-Core Auto Framework Bridge
 local QBCore = nil
 
 if GetResourceState('qbx_core') == 'started' then
-    QBCore = exports['qbx_core']:GetCoreObject()
-    print('^2[JPR Casino] Linked to QBOX Core (qbx_core)^0')
+    QBCore = exports['qbx_core']:GetCore()
+    print('[JPR Casino] Linked to QBOX Core ✅')
 elseif GetResourceState('qb-core') == 'started' then
     QBCore = exports['qb-core']:GetCoreObject()
-    print('^2[JPR Casino] Linked to QB-Core^0')
+    print('[JPR Casino] Linked to QB-Core ✅')
 else
-    print('^1[JPR Casino] No Core Framework Found (qbx_core or qb-core)^0')
+    print('[JPR Casino] ⚠️ No core framework detected (qbx_core / qb-core)')
     QBCore = {}
 end
 

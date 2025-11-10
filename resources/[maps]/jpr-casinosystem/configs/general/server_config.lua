@@ -15,19 +15,42 @@ function AddMoney(Player, moneyType, amount, reason)
 end
 
 function CallBackFunction(...)
+    if not QBX or not QBX.Functions then
+        print('^1[JPR Casino] ERROR: QBX.Functions not available yet^0')
+        return nil
+    end
     return QBX.Functions.CreateCallback(...)
 end
 
 function NotifyServer(player, message, notifyType)
+    if not player or not player.PlayerData then
+        return
+    end
     TriggerClientEvent('QBX:Notify', player.PlayerData.source, message, notifyType)
 end
 
 function GetPlayer(source)
+    if not QBX or not QBX.Functions then
+        -- Wait a bit and retry if QBX isn't ready
+        local attempts = 0
+        while (not QBX or not QBX.Functions) and attempts < 10 do
+            Wait(100)
+            attempts = attempts + 1
+        end
+        if not QBX or not QBX.Functions then
+            print('^1[JPR Casino] ERROR: QBX.Functions not available after wait^0')
+            return nil
+        end
+    end
     return QBX.Functions.GetPlayer(source)
 end
 
 function CheckMoney(source, amount)
     local xPlayer = GetPlayer(source)
+    
+    if not xPlayer or not xPlayer.PlayerData then
+        return false
+    end
     
 	if xPlayer.PlayerData.money.cash >= amount then
         RemoveMoney(xPlayer, 'cash', amount, "Casino purchase")

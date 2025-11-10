@@ -1,5 +1,17 @@
 local Core = nil
 
+-- Initialize QBX and QBCore with safe placeholder structure to prevent nil errors
+-- This ensures they exist even if core isn't ready yet
+if not QBX then
+    QBX = {}
+end
+if not _G.QBCore then
+    _G.QBCore = {}
+end
+if not QBCore then
+    QBCore = {}
+end
+
 -- Function to initialize core from qbx_core
 local function initQBXCore()
     if GetResourceState('qbx_core') == 'started' then
@@ -40,9 +52,30 @@ local function initQBCore()
     return false
 end
 
--- Try to initialize immediately
-if not initQBXCore() and not initQBCore() then
-    -- If initialization failed, set up retry mechanism
+-- Try to initialize immediately with a short synchronous wait
+local initialized = false
+if GetResourceState('qbx_core') == 'started' or GetResourceState('qbx_core') == 'starting' then
+    -- Try a few times synchronously (with small waits) before going async
+    for i = 1, 5 do
+        if initQBXCore() then
+            initialized = true
+            break
+        end
+        if i < 5 then
+            Wait(100)  -- Small wait between attempts
+        end
+    end
+end
+
+-- If still not initialized, try qb-core
+if not initialized then
+    if GetResourceState('qb-core') == 'started' then
+        initialized = initQBCore()
+    end
+end
+
+-- If initialization failed, set up async retry mechanism
+if not initialized then
     if GetResourceState('qbx_core') == 'starting' or GetResourceState('qbx_core') == 'started' then
         CreateThread(function()
             local attempts = 0
@@ -57,15 +90,17 @@ if not initQBXCore() and not initQBCore() then
                 end
             end
             
-            -- If we still haven't initialized, set empty tables to prevent nil errors
+            -- If we still haven't initialized, keep placeholder structure
             if not Core then
                 print('^1[JPR Casino] ERROR: Failed to initialize QBOX Core after retries^0')
-                Core, QBX, _G.QBCore, QBCore = {}, {}, {}, {}
+                -- Keep the placeholder structure to prevent nil errors
+                Core = {}
             end
         end)
     else
         print('^1[JPR Casino] No core framework detected (qbx_core or qb-core)^0')
-        Core, QBX, _G.QBCore, QBCore = {}, {}, {}, {}
+        Core = {}
+        -- Keep placeholder structure for QBX and QBCore
     end
 end
 

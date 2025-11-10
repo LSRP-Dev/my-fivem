@@ -1,13 +1,13 @@
 local QBCore = nil
 
 if GetResourceState('qbx_core') == 'started' then
-    QBCore = exports['qbx_core']:GetCore()
-    print('[JPR Casino] Linked to QBOX Core ✅')
+    QBCore = exports['qbx_core']:GetSharedObject() -- ✅ works in Qbox
+    print('^2[JPR Casino] Linked to QBOX Core via GetSharedObject()^0')
 elseif GetResourceState('qb-core') == 'started' then
     QBCore = exports['qb-core']:GetCoreObject()
-    print('[JPR Casino] Linked to QB-Core ✅')
+    print('^2[JPR Casino] Linked to QB-Core^0')
 else
-    print('[JPR Casino] ⚠️ No core framework detected (qbx_core / qb-core)')
+    print('^1[JPR Casino] No core framework detected (qbx_core or qb-core)^0')
     QBCore = {}
 end
 

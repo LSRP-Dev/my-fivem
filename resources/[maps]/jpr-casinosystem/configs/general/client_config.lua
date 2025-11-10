@@ -58,7 +58,7 @@ function DrawText3Ds(x, y, z, text)
 end
 
 function Notify(message, notifType)
-    QBX.Functions.Notify(message, notifType)
+    exports[Config.CoreName]:Notify(message, notifType)
 end
 
 function RequestAnimDictCasino(anim)
@@ -76,7 +76,7 @@ function GetItemCount(item)
     if (GetResourceState("ox_inventory") == "started") then
         return exports.ox_inventory:Search('count', item) or 0
     else
-        local player = QBX.Functions.GetPlayerData()
+        local player = exports[Config.CoreName]:GetPlayerData()
         local amount = 0
 
         for _, v in ipairs(player.items) do

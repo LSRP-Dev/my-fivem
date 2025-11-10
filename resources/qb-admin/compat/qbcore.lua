@@ -369,7 +369,12 @@ if (IsDuplicityVersion()) then
             SpawnVehicle = function(src, model)
                 if not model or model == "" then return end
                 print(("[919ADMIN][Compat] Spawning vehicle '%s' for source %s"):format(model, src))
-                TriggerEvent('QBCore:Server:SpawnVehicle', model)
+                -- Trigger client event directly for QBox, or use legacy command for QB-Core
+                if GetResourceState('qbx_core') == 'started' then
+                    TriggerClientEvent('919-admin:client:spawnVehicle', src, model, "ADMIN", {})
+                else
+                    TriggerClientEvent("QBCore:Command:SpawnVehicle", src, model)
+                end
             end,
         },
     }

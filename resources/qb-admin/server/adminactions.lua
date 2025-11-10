@@ -592,10 +592,15 @@ RegisterServerEvent("919-admin:server:RequestVehicleSpawn", function(modelName)
     print("^3[919ADMIN] RequestVehicleSpawn received - Model: " .. tostring(modelName) .. ", Source: " .. tostring(src) .. "^0")
     if AdminPanel.HasPermission(src, "spawncar") then
         print("^3[919ADMIN] Permission check passed, spawning vehicle^0")
-        -- For QBox, trigger the client event directly (bridge handles it on client)
-        if Compat and Compat.SpawnVehicle then
-            print("^3[919ADMIN] Using Compat.SpawnVehicle (QBox)^0")
+        
+        -- Check if we're using QBox (qbx_core is started)
+        if GetResourceState('qbx_core') == 'started' then
+            print("^3[919ADMIN] Using QBox spawn (direct client event)^0")
+            -- For QBox, trigger the client event directly (bridge handles it on client)
             TriggerClientEvent('919-admin:client:spawnVehicle', src, modelName, "ADMIN", {})
+        elseif Compat and Compat.SpawnVehicle then
+            print("^3[919ADMIN] Using Compat.SpawnVehicle^0")
+            Compat.SpawnVehicle(src, modelName)
         else
             print("^3[919ADMIN] Using legacy QBCore spawn^0")
             TriggerClientEvent("QBCore:Command:SpawnVehicle", src, modelName)

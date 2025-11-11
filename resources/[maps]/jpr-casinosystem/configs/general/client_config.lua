@@ -1,109 +1,3 @@
-local function getOxLibFunction(name)
-    if type(lib) == 'table' and type(lib[name]) == 'function' then
-        return lib[name]
-    end
-
-    local export = exports.ox_lib
-    if export and type(export[name]) == 'function' then
-        return function(...)
-            return export[name](export, ...)
-        end
-    end
-
-    return nil
-end
-
-local function TriggerCasinoMenuAction(entry)
-    if not entry then return end
-    local params = entry.params or {}
-    local eventName = params.event
-    local serverEvent = params.serverEvent
-    local args = params.args
-
-    if serverEvent then
-        if args ~= nil then
-            TriggerServerEvent(serverEvent, args)
-        else
-            TriggerServerEvent(serverEvent)
-        end
-        return
-    end
-
-    if not eventName then return end
-
-    if args ~= nil then
-        TriggerEvent(eventName, args)
-    else
-        TriggerEvent(eventName)
-    end
-end
-
-local function OpenCasinoMenu(entries)
-    if not entries or #entries == 0 then return end
-
-    local registerContext = getOxLibFunction('registerContext')
-    local showContext = getOxLibFunction('showContext')
-
-    if not registerContext or not showContext then
-        print('^1[JPR Casino] Unable to open menu - ox_lib context functions unavailable.^0')
-        return
-    end
-
-    local menuId = ('casino-menu-%s'):format(GetGameTimer())
-    local title = 'Casino System'
-    local options = {}
-
-    for _, entry in ipairs(entries) do
-        if entry.isMenuHeader then
-            title = entry.header or title
-        else
-            local optionTitle = entry.header or entry.label or 'Option'
-            local description = entry.txt
-
-            options[#options + 1] = {
-                title = optionTitle,
-                description = description,
-                onSelect = function()
-                    TriggerCasinoMenuAction(entry)
-                end
-            }
-        end
-    end
-
-    if #options == 0 then return end
-
-    registerContext({
-        id = menuId,
-        title = title,
-        options = options
-    })
-    showContext(menuId)
-end
-
-local function ShowCasinoNumberInput(prompt, defaultValue)
-    local inputDialog = getOxLibFunction('inputDialog')
-    if not inputDialog then
-        print('^1[JPR Casino] Unable to open input dialog - ox_lib inputDialog unavailable.^0')
-        return nil
-    end
-
-    local dialog = inputDialog(prompt or 'Casino Input', {
-        {
-            type = 'number',
-            label = prompt or 'Amount',
-            default = defaultValue or 1,
-            min = 1
-        }
-    })
-
-    if not dialog then return nil end
-
-    local amount = tonumber(dialog[1])
-    if not amount then return nil end
-
-    return { number = amount }
-end
-
 function CreateTargetZone(zoneName, coords, options)
     RemoveTargetZone(zoneName)
     
@@ -141,24 +35,15 @@ function CreateTargetZone(zoneName, coords, options)
 end
 
 function RemoveTargetZone(zoneName)
-    if not zoneName then return end
-    
-    local success, err = pcall(function()
-        if Config.TargetScript == "ox-target" or Config.TargetScript == "ox_target" then
-            exports[Config.TargetScript]:removeZone("casinoSystem-"..zoneName)
-        else
-            exports[Config.TargetScript]:RemoveZone("casinoSystem-"..zoneName)
-        end
-    end)
-    
-    -- Silently ignore errors if zone doesn't exist
-    if not success then
-        -- Zone doesn't exist or other error, which is fine
+    if Config.TargetScript == "ox-target" or Config.TargetScript == "ox_target" then
+        exports[Config.TargetScript]:removeZone("casinoSystem-"..zoneName)
+    else
+        exports[Config.TargetScript]:RemoveZone("casinoSystem-"..zoneName)
     end
 end
 
 function DrawText3Ds(x, y, z, text)
-    SetTextScale(0.35, 0.35)
+	SetTextScale(0.35, 0.35)
     SetTextFont(4)
     SetTextProportional(1)
     SetTextColour(255, 255, 255, 215)
@@ -173,7 +58,7 @@ function DrawText3Ds(x, y, z, text)
 end
 
 function Notify(message, notifType)
-    exports[Config.CoreName]:Notify(message, notifType)
+    QBCore.Functions.Notify(message, notifType)
 end
 
 function RequestAnimDictCasino(anim)
@@ -181,17 +66,17 @@ function RequestAnimDictCasino(anim)
 end
 
 function RequestTheModel(model)
-    RequestModel(model)
-    while not HasModelLoaded(model) do
-        Wait(0)
-    end
+	RequestModel(model)
+	while not HasModelLoaded(model) do
+		Wait(0)
+	end
 end
 
 function GetItemCount(item)
     if (GetResourceState("ox_inventory") == "started") then
         return exports.ox_inventory:Search('count', item) or 0
     else
-        local player = exports[Config.CoreName]:GetPlayerData()
+        local player = QBCore.Functions.GetPlayerData()
         local amount = 0
 
         for _, v in ipairs(player.items) do
@@ -246,9 +131,8 @@ function OpenSlotsMenu(options)
 end
 
 function GetVehicleProperties(...)
-    return exports[Config.CoreName]:GetVehicleProperties(...)
+    return QBCore.Functions.GetVehicleProperties(...)
 end
-
 
 function SpawnVehicle(vehInfo, coords, warp)
     local veh = CreateVehicle(vehInfo.vehicle, coords.x, coords.y, coords.z, coords.w, true, false)
@@ -313,7 +197,7 @@ function OpenBlackJackInteractions(time, bet, amount)
 end
             
 function HitStandMenu()
-    OpenCasinoMenu({
+    exports[Config.MenuScript]:openMenu({
         {
             id = 1,
             header = "Casino System",
@@ -340,7 +224,7 @@ function HitStandMenu()
 end
 
 function HitStandDoubleMenu()
-    OpenCasinoMenu({
+    exports[Config.MenuScript]:openMenu({
         {
             id = 1,
             header = "Casino System",
@@ -375,7 +259,7 @@ function HitStandDoubleMenu()
 end
 
 function HitSplitMenu()
-    OpenCasinoMenu({
+    exports[Config.MenuScript]:openMenu({
         {
             id = 1,
             header = "Casino System",
@@ -486,9 +370,6 @@ function OpenPokerInteractions()
 end
 
 function table.contains(table, element)
-    if not table or type(table) ~= "table" then
-        return false
-    end
     for _, value in ipairs(table) do
         if value == element then
             return true
@@ -514,15 +395,15 @@ RegisterNetEvent('jpr-casinosystem:client:useBar', function(args)
                 }
             }
 
-            barMenu[#barMenu + 1] = tempVar
+            table.insert(barMenu, tempVar)
         end
     end
 
-    OpenCasinoMenu(barMenu)
+    exports[Config.MenuScript]:openMenu(barMenu)
 end)
 
 RegisterNetEvent('jpr-casinosystem:client:exchange',function()
-    OpenCasinoMenu({
+    exports[Config.MenuScript]:openMenu({
         {
             id = 1,
             header = Config.Locales["104"],
@@ -563,11 +444,11 @@ RegisterNetEvent('jpr-casinosystem:client:memberships',function()
                 }
             }
 
-            memberMenu[#memberMenu + 1] = tempVar
+            table.insert(memberMenu, tempVar)
         end
     end
 
-    OpenCasinoMenu(memberMenu)
+    exports[Config.MenuScript]:openMenu(memberMenu)
 end)
 
 RegisterNetEvent('jpr-casinosystem:client:exchangeChips',function()
@@ -599,9 +480,19 @@ RegisterNetEvent('jpr-casinosystem:client:buyCasinoExtra', function(v)
 end)
 
 RegisterNetEvent('jpr-casinosystem:client:buyChips',function()
-    local number = ShowCasinoNumberInput(Config.Locales["110"], 1)
+    local number = exports["jpr-libs"]:ShowInput({
+        header = Config.Locales["110"],
+        inputs = {
+            {
+                type = 'number',
+                isRequired = true,
+                name = 'number',
+                text = "1"
+            }
+        }
+    })
 
-    if number and tonumber(number.number) and tonumber(number.number) > 0 then
+    if number and tonumber(number.number) > 0 then
         TriggerServerEvent("jpr-casinosystem:server:buyCasinoCoins", number, Config.ChipsExchange.pedID)
     else
         Notify(Config.Locales["114"], "error")

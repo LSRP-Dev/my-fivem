@@ -213,6 +213,12 @@ lib.callback.register('chris_businesses:getBusiness', function(source, businessI
     local citizenid = GetIdentifier(source)
     if not citizenid then return nil end
     
+    -- Check if player has business laptop (server-side validation)
+    local hasLaptop = exports.ox_inventory:Search(source, 'count', Config.LaptopItem) > 0
+    if not hasLaptop then
+        return nil -- Don't return business data if no laptop
+    end
+    
     -- Check permissions
     local role = GetPlayerRole(business, citizenid)
     if not role and not business.for_sale then

@@ -858,4 +858,15 @@ return {
         close = true,
         description = 'A VIP membership card for the Diamond Casino.'
     },
+
+    ['business_laptop'] = {
+        label = 'Business Laptop',
+        weight = 2000,
+        stack = false,
+        close = true,
+        description = 'A laptop for managing your businesses. Use it near a business to access the management dashboard.',
+        client = {
+            export = 'chris_businesses.useBusinessLaptop'
+        }
+    },
 }

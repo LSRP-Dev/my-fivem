@@ -1,3 +1,11 @@
+local Core = module('configs.general.get_core_export')
+local QBX = Core or _G.QBX or _G.QBCore
+local QBCore = QBX -- backwards compatibility for scripts expecting QBCore name
+
+if not QBX or not QBX.Functions then
+    error('[JPR Casino] QBX core reference missing in server_config. Ensure get_core_export.lua loads successfully.')
+end
+
 local function getSource(Player)
     if not Player or not Player.PlayerData then return nil end
     return Player.PlayerData.source

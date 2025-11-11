@@ -1,3 +1,18 @@
+local function getOxLibFunction(name)
+    if type(lib) == 'table' and type(lib[name]) == 'function' then
+        return lib[name]
+    end
+
+    local export = exports.ox_lib
+    if export and type(export[name]) == 'function' then
+        return function(...)
+            return export[name](export, ...)
+        end
+    end
+
+    return nil
+end
+
 local function TriggerCasinoMenuAction(entry)
     if not entry then return end
     local params = entry.params or {}
@@ -26,6 +41,14 @@ end
 local function OpenCasinoMenu(entries)
     if not entries or #entries == 0 then return end
 
+    local registerContext = getOxLibFunction('registerContext')
+    local showContext = getOxLibFunction('showContext')
+
+    if not registerContext or not showContext then
+        print('^1[JPR Casino] Unable to open menu - ox_lib context functions unavailable.^0')
+        return
+    end
+
     local menuId = ('casino-menu-%s'):format(GetGameTimer())
     local title = 'Casino System'
     local options = {}
@@ -49,16 +72,22 @@ local function OpenCasinoMenu(entries)
 
     if #options == 0 then return end
 
-    lib.registerContext({
+    registerContext({
         id = menuId,
         title = title,
         options = options
     })
-    lib.showContext(menuId)
+    showContext(menuId)
 end
 
 local function ShowCasinoNumberInput(prompt, defaultValue)
-    local dialog = lib.inputDialog(prompt or 'Casino Input', {
+    local inputDialog = getOxLibFunction('inputDialog')
+    if not inputDialog then
+        print('^1[JPR Casino] Unable to open input dialog - ox_lib inputDialog unavailable.^0')
+        return nil
+    end
+
+    local dialog = inputDialog(prompt or 'Casino Input', {
         {
             type = 'number',
             label = prompt or 'Amount',

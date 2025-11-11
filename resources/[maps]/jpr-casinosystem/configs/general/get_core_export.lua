@@ -1,6 +1,31 @@
-local Core
+local function makePlaceholder()
+    local function notReady(method)
+        return function()
+            error(('[JPR Casino] Attempted to use QBX.Functions.%s before qbx_core finished starting. Ensure qbx_core starts before jpr-casinosystem.'):format(method))
+        end
+    end
 
-local maxAttempts = 200 -- wait up to ~20 seconds
+    local placeholderFunctions = setmetatable({}, {
+        __index = function(_, method)
+            return notReady(method)
+        end
+    })
+
+    return { Functions = placeholderFunctions }
+end
+
+if not _G.QBX or not _G.QBX.Functions then
+    _G.QBX = makePlaceholder()
+end
+if not _G.QBCore or not _G.QBCore.Functions then
+    _G.QBCore = makePlaceholder()
+end
+
+QBX = _G.QBX
+QBCore = _G.QBCore
+
+local Core
+local maxAttempts = 600 -- wait up to ~60 seconds
 local attempt = 0
 
 if IsDuplicityVersion() then
@@ -31,17 +56,16 @@ if IsDuplicityVersion() then
     end
 
     if not Core then
-        error('[JPR Casino] Failed to acquire core export from qbx_core / qb-core before timeout')
+        error('[JPR Casino] Failed to acquire core export from qbx_core / qb-core before timeout. Check resource order.')
     end
 else
-    -- client side, wait until state bag or exports register QBX
     while attempt < maxAttempts do
         attempt += 1
-        if _G.QBX and _G.QBX.Functions then
+        if _G.QBX and _G.QBX.Functions and _G.QBX.Functions.CreateCallback ~= nil then
             Core = _G.QBX
             break
         end
-        if _G.QBCore and _G.QBCore.Functions then
+        if _G.QBCore and _G.QBCore.Functions and _G.QBCore.Functions.CreateCallback ~= nil then
             Core = _G.QBCore
             break
         end
@@ -49,7 +73,7 @@ else
     end
 
     if not Core then
-        error('[JPR Casino] Client failed to detect QBX/QBCore within timeout; ensure qbx_core is started first')
+        error('[JPR Casino] Client failed to detect QBX/QBCore within timeout; ensure qbx_core loads before jpr-casinosystem.')
     end
 end
 

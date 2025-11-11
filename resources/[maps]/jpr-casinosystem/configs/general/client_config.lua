@@ -60,13 +60,13 @@ local function OpenCasinoMenu(entries)
             local optionTitle = entry.header or entry.label or 'Option'
             local description = entry.txt
 
-            table.insert(options, {
+            options[#options + 1] = {
                 title = optionTitle,
                 description = description,
                 onSelect = function()
                     TriggerCasinoMenuAction(entry)
                 end
-            })
+            }
         end
     end
 
@@ -514,7 +514,7 @@ RegisterNetEvent('jpr-casinosystem:client:useBar', function(args)
                 }
             }
 
-            table.insert(barMenu, tempVar)
+            barMenu[#barMenu + 1] = tempVar
         end
     end
 
@@ -563,7 +563,7 @@ RegisterNetEvent('jpr-casinosystem:client:memberships',function()
                 }
             }
 
-            table.insert(memberMenu, tempVar)
+            memberMenu[#memberMenu + 1] = tempVar
         end
     end
 

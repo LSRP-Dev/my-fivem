@@ -1,28 +1,34 @@
+local useTargetConvar = GetConvar('UseTarget', 'false')
+
 return {
-    useTarget = GetConvar('UseTarget', 'false') == 'true',
-    successChance = 50,
-    robberyChance = 25,
-    minimumDrugSalePolice = 0,
+    useTarget = useTargetConvar == 'true',
+    successChance = 65,
+    robberyChance = 15,
+    minimumDrugSalePolice = 2,
     deliveryLocations = {
         {
-            label = 'Strip Club',
-            coords = vec3(106.24, -1280.32, 29.24),
+            label = 'Little Seoul Apartments',
+            coords = vec3(-713.43, -853.76, 23.82),
         },
         {
-            label = 'Vinewood Video',
-            coords = vec3(223.98, 121.53, 102.76),
+            label = 'Popular Street',
+            coords = vec3(938.27, -1803.65, 31.24),
         },
         {
-            label = 'Taxi',
-            coords = vec3(882.67, -160.26, 77.11),
+            label = 'Mirror Park',
+            coords = vec3(1031.11, -774.38, 57.2),
         },
         {
-            label = 'Resort',
-            coords = vec3(-1245.63, 376.21, 75.34),
+            label = 'Weazel News',
+            coords = vec3(-580.45, -928.21, 23.88),
         },
         {
-            label = 'Bahama Mamas',
-            coords = vec3(-1383.1, -639.99, 28.67),
+            label = 'Sisyphus Theater',
+            coords = vec3(683.92, 571.53, 129.43),
+        },
+        {
+            label = 'Grapeseed Barn',
+            coords = vec3(2540.13, 4675.28, 33.9),
         },
     }
 }

@@ -1232,5 +1232,16 @@ return {
             image = 'WEAPON_HANDCUFFS.PNG'
         }
     },
+    ['animal_tracker'] = { label = 'Animal Tracker', weight = 200, stack = false, allowArmed = true, client = { image = 'animal_tracker.png' } },
+    ['campfire'] = { label = 'Campfire', weight = 200, stack = false, allowArmed = true, client = { image = 'campfire.png' } },
+    ['huntingbait'] = { label = 'Hunting Bait', weight = 100, stack = true, allowArmed = true, client = { image = 'huntingbait.png' } },
+    ['cooked_meat'] = { label = 'Cooked Meat', weight = 200, client = { image = 'cooked_meat.png' } },
+    ['raw_meat'] = { label = 'Raw Meat', weight = 200, client = { image = 'raw_meat.png' } },
+    ['skin_deer_ruined'] = { label = 'Tattered Deer Pelt', weight = 200, stack = false, client = { image = 'skin_deer_ruined.png' } },
+    ['skin_deer_low'] = { label = 'Worn Deer Pelt', weight = 200, client = { image = 'skin_deer_low.png' } },
+    ['skin_deer_medium'] = { label = 'Supple Deer Pelt', weight = 200, client = { image = 'skin_deer_medium.png' } },
+    ['skin_deer_good'] = { label = 'Prime Deer Pelt', weight = 200, client = { image = 'skin_deer_good.png' } },
+    ['skin_deer_perfect'] = { label = 'Flawless Deer Pelt', weight = 200, client = { image = 'skin_deer_perfect.png' } },
+    ['deer_horn'] = { label = 'Deer Horn', weight = 1000, client = { image = 'deer_horn.png' } },
 }
 

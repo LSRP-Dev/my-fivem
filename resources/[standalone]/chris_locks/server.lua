@@ -62,6 +62,16 @@ local function sanitizeLock(lock)
     }
 end
 
+local function ensureVector(value)
+    if value and type(value) == 'vector3' then
+        return value
+    end
+    if value and type(value) == 'table' then
+        return vector3(value.x or 0.0, value.y or 0.0, value.z or 0.0)
+    end
+    return vector3(0.0, 0.0, 0.0)
+end
+
 local LockTypes = {}
 
 LockTypes.password = {
@@ -606,16 +616,6 @@ lib.callback.register('chris_locks:removeLock', function(source, data)
     end
     return false, _('notify_invalid_lock')
 end)
-
-local function ensureVector(value)
-    if value and type(value) == 'vector3' then
-        return value
-    end
-    if value and type(value) == 'table' then
-        return vector3(value.x or 0.0, value.y or 0.0, value.z or 0.0)
-    end
-    return vector3(0.0, 0.0, 0.0)
-end
 
 local function splitList(value)
     if not value or value == '' then return {} end

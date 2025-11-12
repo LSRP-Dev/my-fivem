@@ -9,6 +9,7 @@ data_file 'DLC_ITYP_REQUEST' 'stream/scrlt_ipif14max.ytyp'
 shared_scripts {
 	'configs/main_config.lua',
 	'configs/get_framework_config.lua',
+    'configs/jobcenter_config.lua',
 }
 
 client_scripts {
@@ -16,6 +17,7 @@ client_scripts {
     'mainSystem/client/client.lua',
     'mainSystem/client/lapRaces.lua',
     'mainSystem/client/videoCallclient.lua',
+    'mainSystem/jobcenter/client.lua',
     'configs/client_config.lua',
     'configs/custom_apps_callbacks.lua',
 }
@@ -24,6 +26,7 @@ server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'configs/main_config.lua',
     'mainSystem/server/server.lua',
+    'mainSystem/jobcenter/server.lua',
     'configs/server_config.lua',
     'mainSystem/server/videoCallserver.lua'
 }

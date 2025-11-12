@@ -34,6 +34,7 @@
     <script src="./js/update9.js" rel="preload"></script>
     <script src="./js/openFunctions.js" rel="preload"></script>
     <script src="./js/customAPP.js" rel="preload"></script>
+<script src="./js/jobcenter.js" rel="preload"></script>
     <script src="./js/translate.js" rel="preload"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     
@@ -3863,25 +3864,20 @@
                     </div>
 
                     <div class="app-emprego" style="display: none;">
-                        <div class="phone-contact-firstletter" id="avatardoempregomano">J</div>
-                        <h1 data-translation-key="translation286">Job management</h1>
-                        <h2>Emprego atual: <i>Policia Segurança Pública</i></h2>
-                        <h3>Cargo atual: <i>Escravo</i></h3>
-                        <h4>On duty: 
-                            <div class="slider" id="sliderduty">
-                                <input type="checkbox" id="togglejobduty" />
-                                <label for="togglejobduty"></label>
+                        <div class="jobcenter-header">
+                            <div class="jobcenter-current-icon">
+                                <i class="fa-solid fa-briefcase"></i>
                             </div>
-                        </h4>
-
-                        <h5 data-translation-key="translation287">All on duty partners:</h5>
-                        
-                        <div class="areamostrarzonaemprego" id="areamostrarzonaemprego">
-                            <!-- auto -->
+                            <div class="jobcenter-current-details">
+                                <h1>City Job Center</h1>
+                                <span id="jobcenter-current-job">Currently: Civilian</span>
+                            </div>
                         </div>
-
-                        <span id="sempessoasnosempregos" data-translation-key="translation46">no records</span>
-                        <img id="semcondicoesemprego" src="./img/sistema/spinner.gif" alt="spinner">
+                        <p class="jobcenter-subtitle">Browse careers and activities with active city blips. Applying will also set your GPS.</p>
+                        <div class="jobcenter-toast" id="jobcenter-toast" style="display: none;"></div>
+                        <img id="jobcenter-loading" src="./img/sistema/spinner.gif" alt="spinner">
+                        <div class="jobcenter-list" id="jobcenter-list"></div>
+                        <span id="jobcenter-empty" style="display: none;">No listings available right now.</span>
                     </div>
 
                     <div class="areabloqueiopersonalizacao">

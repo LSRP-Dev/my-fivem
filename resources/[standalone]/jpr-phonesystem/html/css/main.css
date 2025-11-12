@@ -27492,269 +27492,223 @@ emprego
     transition: 0.7s ease;
     border-radius: 3vh;
     z-index: 3;
-    overflow: hidden
-}
-
-.app-emprego > .phone-contact-firstletter {
-    position: absolute;
-    transition: 0.6 ease;
-    height: 2vh;
-    width: 2vh;
-    margin: .5vh;
-    top: 9%;
-    right: 5%;
-    text-align: center;
-    font-size: 1.2vh;
     overflow: hidden;
-    line-height: 2.2vh;
-    border-radius: 50%;
-    font-family: ProLight;
-    background: linear-gradient(11deg, rgb(100, 96, 96) 0%, rgba(168,168,168,1) 100%);
-    filter: drop-shadow(0 0 0.35rem rgba(54, 54, 54, 0.122));
-    color: rgba(242, 240, 240, 0.9);
-    cursor: default;
+    padding: 2.5vh 2vh;
+    box-sizing: border-box;
 }
 
-.app-emprego > h1 {
+.jobcenter-header {
+    display: flex;
+    align-items: center;
+    gap: 1.4vh;
+}
+
+.jobcenter-current-icon {
+    width: 3.4vh;
+    height: 3.4vh;
+    border-radius: 1.7vh;
+    background: var(--modoatualfundo2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--modocoratual);
-    font-family: ProBold;
-    font-weight: bolder;
-    position: relative;
-    text-align: center;
-    top: 10%;
-    height: 13%;
     font-size: 1.5vh;
-    transition: 0.5s ease;
+    filter: drop-shadow(0 0 0.45rem rgba(54, 54, 54, 0.12));
 }
 
+.jobcenter-current-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3vh;
+}
 
-.app-emprego > h2 {
-    color: var(--modocoratual);
+.jobcenter-current-details h1 {
+    margin: 0;
+    font-size: 1.5vh;
     font-family: ProBold;
-    font-weight: bolder;
-    position: relative;
-    text-align: left;
-    top: 4.5%;
-    left: 5%;
-    font-size: 1.2vh;
-    transition: 0.5s ease;
-}
-
-.app-emprego > h2 > i {
-    color: #848484;
-    font-style: normal;
-}
-
-.app-emprego > h3 {
     color: var(--modocoratual);
-    font-family: ProBold;
-    font-weight: bolder;
-    position: relative;
-    text-align: left;
-    top: 4.5%;
-    left: 5%;
-    font-size: 1.2vh;
-    transition: 0.5s ease;
 }
 
-.app-emprego > h3 > i {
-    color: #848484;
-    font-style: normal;
-}
-
-.app-emprego > h4 {
+.jobcenter-current-details span {
+    font-size: 1.1vh;
     color: var(--modocoratual);
-    font-family: ProBold;
-    font-weight: bolder;
-    position: relative;
-    text-align: left;
-    top: 4.3%;
-    left: 5%;
-    font-size: 1.2vh;
-    height: 13%;
-    transition: 0.5s ease;
-}
-
-.app-emprego > h4 > i {
-    color: #848484;
-    font-style: normal;
-}
-
-.app-emprego > span {
-    font-weight: bolder;
-    position: relative;
-    text-align: center;
-    height: 13%;
-    font-weight: 100;
-    font-size: 1.8vh;
-    top: 25%;
-    transition: 0.5s ease;
+    opacity: 0.75;
     font-family: ProLight;
-    color: #848484;
 }
 
-.app-emprego > .phone-contact-firstletter> img {
-    width: 100%;position:absolute;top:0;left:-0.1%;object-fit: cover;height:100%;
+.jobcenter-subtitle {
+    margin: 1.6vh 0 1.2vh 0;
+    font-size: 1.05vh;
+    color: var(--modocoratual);
+    opacity: 0.7;
+    line-height: 1.5;
+    font-family: ProLight;
 }
 
-
-.app-emprego > h4 > .slider {
-    width: 3vh;
-    height: 1%;
-    top: 0;
-    margin-left: 2%;
-    display: inline-block;
-    position: absolute;
-    z-index: 5;
-  }
-  
-  .app-emprego > h4 > .slider input[type=checkbox] {
-    visibility: hidden;
-  }
-  
-  .app-emprego > h4 > .slider label {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 3.63vh;
-    height: 1.5vh;
-    background-color: var(--modoatualfundo2);
-    border-radius: 1.2vh;
-    cursor: pointer;
-    
-    transition: background-color 0.3s;
-  }
-  
-  .app-emprego > h4 > .slider input[type=checkbox]:checked + label {
-    background-color: #62c162;
-  }
-  
-  .app-emprego > h4 > .slider label::before {
-    position: absolute;
-    content: "";
-    height: 1.3vh;
-    width: 1.3vh;
-    left: 0.25vh;
-    bottom: 0.12vh;
-    background-color: white;
-    border-radius: 50%;
-    filter: drop-shadow(0 0 0.5rem rgba(54, 54, 54, 0.104));
-    transition: transform 0.3s;
-  }
-  
-  .app-emprego > h4 > .slider input[type=checkbox]:checked + label::before {
-    transform: translateX(1.90vh);
-  }
-
-
-  .app-emprego > .areamostrarzonaemprego {
-    position: absolute;
-    width: 90%;
-    left: 5%;
-    max-height: 55%;
-    font-size: 0;
-    border-radius: 0.5vh;
-    overflow-y: scroll;
-    filter: drop-shadow(0 0 0.5rem rgba(54, 54, 54, 0.01));
-  }
-
-  .app-emprego > .areamostrarzonaemprego::-webkit-scrollbar {
+.jobcenter-toast {
     display: none;
-  }
+    padding: 0.8vh 1.2vh;
+    border-radius: 1.2vh;
+    font-size: 1vh;
+    font-family: ProLight;
+    margin-bottom: 1.2vh;
+    background: rgba(52, 120, 245, 0.12);
+    color: #1f4f9f;
+}
 
-  .app-emprego > h5 {
+.jobcenter-toast.success {
+    background: rgba(98, 193, 98, 0.18);
+    color: #3b8044;
+}
+
+.jobcenter-toast.error {
+    background: rgba(232, 76, 61, 0.18);
+    color: #a3392f;
+}
+
+.jobcenter-toast.info {
+    background: rgba(52, 120, 245, 0.12);
+    color: #1f4f9f;
+}
+
+#jobcenter-loading {
+    width: 18%;
+    display: none;
+    margin: 4vh auto;
+}
+
+.jobcenter-list {
+    margin-top: 0.5vh;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2vh;
+    overflow-y: auto;
+    max-height: calc(100% - 14vh);
+    padding-right: 0.6vh;
+}
+
+.jobcenter-list::-webkit-scrollbar {
+    width: 0.35vh;
+}
+
+.jobcenter-list::-webkit-scrollbar-thumb {
+    background: rgba(52, 120, 245, 0.25);
+    border-radius: 1vh;
+}
+
+.jobcenter-card {
+    background: var(--modoatualfundo2);
+    border-radius: 1.6vh;
+    padding: 1.6vh;
+    display: flex;
+    gap: 1.4vh;
+    align-items: flex-start;
+    box-shadow: 0 0.2vh 0.8vh rgba(0, 0, 0, 0.05);
+}
+
+.jobcenter-card-icon {
+    width: 3.6vh;
+    height: 3.6vh;
+    border-radius: 50%;
+    background: var(--modoatualfundo);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--modocoratual);
+    font-size: 1.6vh;
+}
+
+.jobcenter-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8vh;
+    flex: 1;
+}
+
+.jobcenter-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1vh;
+}
+
+.jobcenter-card-header h2 {
+    margin: 0;
+    font-size: 1.3vh;
     font-family: ProBold;
-    font-weight: bolder;
-    position: relative;
-    text-align: left;
-    left: 5%;
-    font-size: 1.2vh;
-    transition: 0.5s ease;
-}
-
-.app-emprego > .areamostrarzonaemprego > .jogadorfolhaponto {
-    position: relative;
-    display: inline-block;
-    width: 100%;
-    background-color: var(--modoatualfundo2);
-    height: 3vh;
-    border-bottom: 1px solid var(--coratualbordas);
-    cursor: default;
-    transition: 0.5s ease;
-}
-
-.app-emprego > .areamostrarzonaemprego > .jogadorfolhaponto:hover {
-    transform: scale(1.03);
-}
-
-.app-emprego > .areamostrarzonaemprego > .jogadorfolhaponto > h1 {
     color: var(--modocoratual);
-    font-family: ProBold;
-    font-weight: bolder;
-    position: relative;
-    text-align: left;
-    top: 26.5%;
-    left: 5%;
-    font-size: 1.25vh;
-    transition: 0.5s ease;
-    cursor: default;
-    max-width: 75%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
-.app-emprego > .areamostrarzonaemprego > .jogadorfolhaponto > i {
-    color: var(--modocoratual);
-    position: absolute;
-    text-align: left;
-    top: 27.5%;
-    right: 5%;
-    font-size: 1.25vh;
-    cursor: default;
+.jobcenter-tag {
+    font-size: 0.9vh;
+    padding: 0.2vh 0.8vh;
+    border-radius: 1vh;
+    text-transform: uppercase;
+    letter-spacing: 0.05vh;
+    font-family: ProMedium;
+}
+
+.jobcenter-tag.job {
+    background: rgba(52, 120, 245, 0.18);
     color: #3478f5;
 }
 
-.app-emprego > span {
-    font-weight: bolder;
-    position: relative;
-    text-align: center;
-    height: 13%;
-    font-weight: 100;
-    font-size: 1.8vh;
-    top: 15%;
-    transition: 0.5s ease;
-    font-family: ProLight;
-    color: #848484;
+.jobcenter-tag.activity {
+    background: rgba(98, 193, 98, 0.18);
+    color: #52a855;
 }
 
-#semcondicoesempregojob {
-    font-weight: bolder;
-    position: absolute;
-    text-align: center;
-    font-weight: 100;
-    font-size: 1.8vh;
-    top: 52%;
-    left: 43%;
-    width: 15%;
-    transition: 0.5s ease;
+.jobcenter-card-body p {
+    margin: 0;
+    font-size: 1vh;
+    color: var(--modocoratual);
+    opacity: 0.82;
+    line-height: 1.45;
     font-family: ProLight;
-    color: #848484;
 }
 
-#semcondicoesemprego {
-    font-weight: bolder;
-    position: absolute;
+.jobcenter-card-footer {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1vh;
+}
+
+.jobcenter-action {
+    border: none;
+    border-radius: 1.2vh;
+    padding: 0.6vh 1.6vh;
+    font-size: 1vh;
+    font-family: ProBold;
+    background: #3478f5;
+    color: #ffffff;
+    cursor: pointer;
+    transition: 0.3s ease;
+}
+
+.jobcenter-action:disabled {
+    background: rgba(132, 132, 132, 0.35);
+    color: rgba(255, 255, 255, 0.7);
+    cursor: not-allowed;
+}
+
+.jobcenter-action:not(:disabled):hover {
+    filter: brightness(1.1);
+}
+
+.jobcenter-location {
+    font-size: 0.9vh;
+    color: var(--modocoratual);
+    opacity: 0.7;
+    font-family: ProLight;
+}
+
+#jobcenter-empty {
+    display: none;
+    margin-top: 4vh;
     text-align: center;
-    font-weight: 100;
-    font-size: 1.8vh;
-    top: 56%;
-    left: 43%;
-    width: 15%;
-    transition: 0.5s ease;
+    font-size: 1.2vh;
     font-family: ProLight;
     color: #848484;
 }

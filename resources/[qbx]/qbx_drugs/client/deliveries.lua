@@ -8,16 +8,62 @@ local deliveryTimeout = 0
 local waitingKeyPress = false
 local dealerCombo = false
 local drugDeliveryZone
+local dealerPeds = {}
 
 ---@diagnostic disable-next-line: param-type-mismatch
 AddStateBagChangeHandler('isLoggedIn', nil, function(_, _, value)
     if value then
         sharedConfig.dealers = lib.callback.await('qb-drugs:server:RequestConfig', false)
         InitZones()
+        spawnDealerPeds()
     else
+        deleteDealerPeds()
         if not config.useTarget and dealerCombo then dealerCombo:destroy() end
     end
 end)
+
+local function spawnDealerPed(name, data)
+    if dealerPeds[name] and DoesEntityExist(dealerPeds[name]) then return end
+
+    local pedData = data.ped
+    if not pedData or not pedData.model or not data.coords then return end
+
+    local model = pedData.model
+    lib.requestModel(model, 5000)
+
+    local coords = vector4(data.coords.x, data.coords.y, data.coords.z, data.coords.w or 0.0)
+    local ped = CreatePed(4, model, coords.x, coords.y, coords.z - 1.0, coords.w, false, true)
+
+    if not ped or not DoesEntityExist(ped) then return end
+
+    SetEntityHeading(ped, coords.w)
+    SetBlockingOfNonTemporaryEvents(ped, true)
+    SetEntityInvincible(ped, true)
+    SetPedDiesWhenInjured(ped, false)
+    FreezeEntityPosition(ped, true)
+
+    if pedData.scenario and pedData.scenario ~= '' then
+        TaskStartScenarioInPlace(ped, pedData.scenario, 0, true)
+    end
+
+    dealerPeds[name] = ped
+end
+
+function spawnDealerPeds()
+    deleteDealerPeds()
+    for name, data in pairs(sharedConfig.dealers) do
+        spawnDealerPed(name, data)
+    end
+end
+
+function deleteDealerPeds()
+    for name, ped in pairs(dealerPeds) do
+        if DoesEntityExist(ped) then
+            DeleteEntity(ped)
+        end
+        dealerPeds[name] = nil
+    end
+end
 
 local function getClosestDealer()
     local pCoords = GetEntityCoords(cache.ped)
@@ -333,6 +379,7 @@ RegisterNetEvent('qb-drugs:client:RefreshDealers', function(DealerData)
     sharedConfig.dealers = DealerData
     Wait(1000)
     InitZones()
+    spawnDealerPeds()
 end)
 
 RegisterNetEvent('qb-drugs:client:updateDealerItems', function(itemData, amount)

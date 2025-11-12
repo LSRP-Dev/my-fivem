@@ -31,8 +31,16 @@ const initialForm = {
   radius: '2.5',
   unlockDuration: '300',
   hidden: true,
-  useDoor: true
+  useDoor: true,
+  doubleDoor: false,
+  newDoor: null
 }
+
+const buildInitialForm = () => ({
+  ...initialForm,
+  coords: { ...initialForm.coords },
+  newDoor: null
+})
 
 const fetchNui = async (event, data) => {
   try {
@@ -109,7 +117,7 @@ function AdminPanel({ visible, doorSelection }) {
   const [filter, setFilter] = useState('')
   const [selectedId, setSelectedId] = useState(null)
   const [passwordEdit, setPasswordEdit] = useState('')
-  const [form, setForm] = useState(initialForm)
+  const [form, setForm] = useState(() => buildInitialForm())
   const [status, setStatus] = useState(null)
   const [doorLabel, setDoorLabel] = useState('')
   const [loading, setLoading] = useState(false)
@@ -150,7 +158,7 @@ function AdminPanel({ visible, doorSelection }) {
     }
     setForm((prev) => ({
       ...prev,
-      targetDoorId: doorSelection.doorId || prev.targetDoorId,
+      targetDoorId: doorSelection.doorId || '',
       useDoor: true,
       coords: {
         x: format(coords.x),
@@ -160,10 +168,18 @@ function AdminPanel({ visible, doorSelection }) {
       radius:
         doorSelection.radius !== undefined && doorSelection.radius !== null
           ? String(doorSelection.radius)
-          : prev.radius
+          : prev.radius,
+      newDoor: doorSelection.newDoor || null,
+      doubleDoor: doorSelection.newDoor ? !!doorSelection.newDoor.double : false
     }))
-    setDoorLabel(doorSelection.label || doorSelection.doorId || '')
-    setStatus({ type: 'success', text: `Selected door ${doorSelection.doorId || ''}` })
+    const labelText = doorSelection.label || doorSelection.doorId || (doorSelection.newDoor ? 'Custom door' : '')
+    setDoorLabel(labelText)
+    setStatus({
+      type: 'success',
+      text: doorSelection.newDoor
+        ? `Captured custom ${doorSelection.newDoor.double ? 'double ' : ''}door`
+        : `Selected door ${doorSelection.doorId || ''}`
+    })
     const timeout = setTimeout(() => setStatus(null), 3500)
     return () => clearTimeout(timeout)
   }, [doorSelection])
@@ -232,7 +248,8 @@ function AdminPanel({ visible, doorSelection }) {
   }
 
   const handleSelectDoor = async () => {
-    await fetchNui('locksAdmin:startDoorSelect')
+    await fetchNui('locksAdmin:startDoorSelect', { doubleDoor: form.doubleDoor })
+    setForm((prev) => ({ ...prev, newDoor: null }))
   }
 
   const handleUpdatePassword = async () => {
@@ -272,7 +289,9 @@ function AdminPanel({ visible, doorSelection }) {
     }
     setForm((prev) => ({
       ...prev,
-      coords: { x: format(coords.x), y: format(coords.y), z: format(coords.z) }
+      coords: { x: format(coords.x), y: format(coords.y), z: format(coords.z) },
+      newDoor: null,
+      doubleDoor: !!result.doors
     }))
     setDoorLabel(result.label || result.id || form.targetDoorId.trim())
     notify('success', 'Door coordinates loaded.')
@@ -288,9 +307,12 @@ function AdminPanel({ visible, doorSelection }) {
       notify('error', 'Lock type is required.')
       return
     }
-    if (form.useDoor && !form.targetDoorId.trim()) {
-      notify('error', 'Door ID is required to use door coordinates.')
-      return
+    if (form.useDoor) {
+      const hasDoorId = !!form.targetDoorId.trim()
+      if (!hasDoorId && !form.newDoor) {
+        notify('error', 'Select or enter a door before creating the lock.')
+        return
+      }
     }
     if (!form.useDoor) {
       const { x, y, z } = form.coords
@@ -305,10 +327,12 @@ function AdminPanel({ visible, doorSelection }) {
       id: form.id.trim(),
       type: form.type,
       credential: form.credential.trim(),
-      targetDoorId: form.targetDoorId.trim(),
+      targetDoorId: form.useDoor ? form.targetDoorId.trim() : '',
       radius: Number.isFinite(radius) ? radius : undefined,
       unlockDuration: Number.isFinite(unlockDuration) ? unlockDuration : undefined,
-      hidden: form.hidden
+      hidden: form.hidden,
+      useDoor: form.useDoor,
+      doubleDoor: form.doubleDoor
     }
     if (!form.useDoor) {
       payload.coords = {
@@ -316,6 +340,8 @@ function AdminPanel({ visible, doorSelection }) {
         y: parseFloat(form.coords.y),
         z: parseFloat(form.coords.z)
       }
+    } else if (form.newDoor) {
+      payload.newDoor = form.newDoor
     }
     setCreating(true)
     const result = await fetchNui('locksAdmin:createLock', payload)
@@ -326,7 +352,7 @@ function AdminPanel({ visible, doorSelection }) {
     }
     if (result.success) {
       notify('success', result.message || `Lock ${payload.id} created.`)
-      setForm(initialForm)
+      setForm(buildInitialForm())
       setDoorLabel('')
       await refreshLocks(payload.id)
     } else {
@@ -538,9 +564,27 @@ function AdminPanel({ visible, doorSelection }) {
                         <input
                           type="checkbox"
                           checked={form.useDoor}
-                          onChange={(event) => setForm({ ...form, useDoor: event.target.checked })}
+                          onChange={(event) =>
+                            setForm((prev) => {
+                              const nextUseDoor = event.target.checked
+                              return {
+                                ...prev,
+                                useDoor: nextUseDoor,
+                                targetDoorId: nextUseDoor ? prev.targetDoorId : '',
+                                newDoor: nextUseDoor ? prev.newDoor : null
+                              }
+                            })
+                          }
                         />
                         Use door coordinates
+                      </label>
+                      <label className="checkbox">
+                        <input
+                          type="checkbox"
+                          checked={form.doubleDoor}
+                          onChange={(event) => setForm({ ...form, doubleDoor: event.target.checked })}
+                        />
+                        Double door
                       </label>
                       <button
                         type="button"
@@ -555,6 +599,13 @@ function AdminPanel({ visible, doorSelection }) {
                       </button>
                     </div>
                     {doorLabel && <span className="door-label">{doorLabel}</span>}
+                    {form.newDoor && (
+                      <div className="door-summary">
+                        <strong>Captured:</strong>{' '}
+                        {form.newDoor.double ? 'Double door' : 'Single door'} · Model{' '}
+                        {form.newDoor.doors?.map((door) => door.model).join(', ')}
+                      </div>
+                    )}
                   </div>
                   {!form.useDoor && (
                     <div className="form-item coordinates">
@@ -659,6 +710,7 @@ export default function App() {
           label: data.label,
           coords: data.coords,
           radius: data.radius,
+          newDoor: data.newDoor || null,
           at: Date.now()
         })
       }

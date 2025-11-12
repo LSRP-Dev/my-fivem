@@ -16,6 +16,8 @@ local ActiveLockId = nil
 local AdminUIOpen = false
 local DoorSelectActive = false
 local DoorSelectEntity = 0
+local DoorSelectDouble = false
+local DoorSelectQueue = {}
 
 local function rotationToDirection(rotation)
     local radX = math.rad(rotation.x)
@@ -53,6 +55,88 @@ local function cameraRaycast(flags, distance)
     end
 
     return hit == 1, entityHit, endCoords, surfaceNormal
+end
+
+local function resetDoorSelectionState()
+    DoorSelectDouble = false
+    DoorSelectQueue = {}
+end
+
+local function roundValue(value, decimals)
+    local multiplier = 10 ^ (decimals or 2)
+    return math.floor(value * multiplier + 0.5) / multiplier
+end
+
+local function buildDoorEntry(entity)
+    local coords = GetEntityCoords(entity)
+    local heading = GetEntityHeading(entity)
+    local model = GetEntityModel(entity)
+    local min, max = GetModelDimensions(model)
+    local footprint = math.max(math.abs(max.x - min.x), math.abs(max.y - min.y))
+
+    return {
+        entity = entity,
+        model = model,
+        heading = heading,
+        coords = { x = coords.x, y = coords.y, z = coords.z },
+        footprint = footprint
+    }
+end
+
+local function finalizeCustomDoorSelection()
+    local count = #DoorSelectQueue
+    if count == 0 then return end
+
+    local entries = {}
+    local center = vec3(0.0, 0.0, 0.0)
+    local radius = 2.0
+
+    for i = 1, count do
+        local entry = DoorSelectQueue[i]
+        entries[i] = {
+            model = entry.model,
+            heading = entry.heading,
+            coords = {
+                x = entry.coords.x,
+                y = entry.coords.y,
+                z = entry.coords.z
+            }
+        }
+        center += vec3(entry.coords.x, entry.coords.y, entry.coords.z)
+
+        local entryRadius = (entry.footprint or 1.6) * 0.5 + 0.75
+        if entryRadius > radius then
+            radius = entryRadius
+        end
+    end
+
+    center = center / count
+
+    if count == 2 then
+        local c1 = vec3(entries[1].coords.x, entries[1].coords.y, entries[1].coords.z)
+        local c2 = vec3(entries[2].coords.x, entries[2].coords.y, entries[2].coords.z)
+        local pairRadius = #(c1 - c2) * 0.5 + 0.75
+        if pairRadius > radius then
+            radius = pairRadius
+        end
+    end
+
+    radius = roundValue(radius, 2)
+
+    local payload = {
+        doorId = '',
+        label = count == 2 and _('admin_select_custom_double_label') or _('admin_select_custom_single_label'),
+        coords = { x = center.x, y = center.y, z = center.z },
+        radius = radius,
+        newDoor = {
+            double = count == 2,
+            doors = entries,
+            center = { x = center.x, y = center.y, z = center.z },
+            suggestedRadius = radius
+        }
+    }
+
+    TriggerEvent('chris_locks:client:doorSelectResult', payload)
 end
 
 local function clientNotify(message, type)
@@ -141,19 +225,23 @@ local function stopDoorSelection(reopen)
         end
         EnableAllControlActions(0)
     end
+    resetDoorSelectionState()
     if reopen then
         openAdminUI()
     end
 end
 
-local function startDoorSelection()
+local function startDoorSelection(options)
     if DoorSelectActive then return end
     DoorSelectActive = true
     DoorSelectEntity = 0
+    DoorSelectDouble = (options and (options.doubleDoor or options.double)) and true or false
+    DoorSelectQueue = {}
+    local message = DoorSelectDouble and _('admin_select_door_ui_double') or _('admin_select_door_ui')
     if lib and lib.showTextUI then
-        lib.showTextUI(_('admin_select_door_ui'))
+        lib.showTextUI(message)
     else
-        clientNotify(_('admin_select_door_ui'), 'inform')
+        clientNotify(message, 'inform')
     end
 end
 
@@ -218,10 +306,10 @@ RegisterNUICallback('locksAdmin:close', function(_, cb)
     closeAdminUI()
 end)
 
-RegisterNUICallback('locksAdmin:startDoorSelect', function(_, cb)
+RegisterNUICallback('locksAdmin:startDoorSelect', function(data, cb)
     cb(1)
     closeAdminUI()
-    startDoorSelection()
+    startDoorSelection(data or {})
 end)
 
 RegisterNUICallback('locksAdmin:getLocks', function(_, cb)
@@ -313,7 +401,7 @@ RegisterNetEvent('chris_locks:client:doorSelectResult', function(payload)
         clientNotify(payload.error, 'error')
         return
     end
-    if not payload or not payload.doorId then
+    if not payload or ((not payload.doorId or payload.doorId == '') and not payload.newDoor) then
         clientNotify(_('admin_select_door_fail'), 'error')
         return
     end
@@ -323,10 +411,11 @@ RegisterNetEvent('chris_locks:client:doorSelectResult', function(payload)
     Citizen.SetTimeout(150, function()
         SendNUIMessage({
             action = 'doorSelected',
-            doorId = payload.doorId,
+            doorId = payload.doorId or '',
             label = payload.label,
             coords = payload.coords,
             radius = payload.radius,
+            newDoor = payload.newDoor
         })
     end)
 end)
@@ -398,9 +487,7 @@ CreateThread(function()
                         if Utils.resourceActive('ox_doorlock') and exports.ox_doorlock and exports.ox_doorlock.getDoorIdFromEntity then
                             doorId = exports.ox_doorlock:getDoorIdFromEntity(entity)
                         end
-                        if not doorId then
-                            clientNotify(_('admin_select_door_not_registered'), 'error')
-                        else
+                        if doorId then
                             local data = lib.callback.await('chris_locks:getDoorInfo', false, doorId)
                             if not data or not data.coords then
                                 clientNotify(_('admin_select_door_not_registered'), 'error')
@@ -420,9 +507,30 @@ CreateThread(function()
                                     radius = data.distance,
                                 })
                             end
+                        else
+                            local duplicate = false
+                            for i = 1, #DoorSelectQueue do
+                                if DoorSelectQueue[i].entity == entity then
+                                    duplicate = true
+                                    break
+                                end
+                            end
+
+                            if duplicate then
+                                clientNotify(_('admin_select_door_duplicate'), 'error')
+                            else
+                                DoorSelectQueue[#DoorSelectQueue + 1] = buildDoorEntry(entity)
+
+                                if DoorSelectDouble and #DoorSelectQueue < 2 then
+                                    clientNotify(_('admin_select_door_wait_second'), 'inform')
+                                else
+                                    finalizeCustomDoorSelection()
+                                end
+                            end
                         end
                     end
                 elseif IsDisabledControlJustPressed(0, 25) or IsDisabledControlJustPressed(0, 200) or IsDisabledControlJustPressed(0, 202) then
+                    DoorSelectQueue = {}
                     stopDoorSelection(true)
                     clientNotify(_('admin_select_door_cancel'), 'inform')
                 end

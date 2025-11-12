@@ -24,8 +24,8 @@ Config.Target = {
 
 -- Currency Configuration
 Config.Currency = {
-    type = "cash", -- "cash" or "bank" or custom item name like "crypto"
-    removeType = "remove" -- "remove" for cash/bank, "removeItem" for items
+    type = "black_money", -- Use dirty money item in ox_inventory
+    removeType = "removeItem" -- Not currently used but kept for clarity
 }
 
 -- UI Configuration

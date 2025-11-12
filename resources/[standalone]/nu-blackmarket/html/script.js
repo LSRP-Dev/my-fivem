@@ -143,6 +143,29 @@ class BlackmarketUI {
         this.renderCart();
     }
 
+    getCurrencyDisplay(currencyType) {
+        const type = currencyType || this.config?.currency || 'cash';
+
+        switch (type) {
+            case 'cash':
+                return { type, label: 'Cash', amountPrefix: '$', amountSuffix: '' };
+            case 'bank':
+                return { type, label: 'Bank', amountPrefix: '$', amountSuffix: '' };
+            case 'black_money':
+                return { type, label: 'Dirty Money', amountPrefix: '', amountSuffix: ' Dirty Money' };
+            default: {
+                const pretty = type.charAt(0).toUpperCase() + type.slice(1);
+                return { type, label: pretty, amountPrefix: '', amountSuffix: ` ${pretty}` };
+            }
+        }
+    }
+
+    formatAmount(amount, currencyType) {
+        const { amountPrefix, amountSuffix } = this.getCurrencyDisplay(currencyType);
+        const formatted = this.formatNumber(amount);
+        return `${amountPrefix}${formatted}${amountSuffix}`;
+    }
+
     renderHeader() {
         document.getElementById('app-title').textContent = this.config.title;
         document.getElementById('app-subtitle').textContent = this.config.subtitle;
@@ -259,7 +282,7 @@ class BlackmarketUI {
                 <div class="item-header">
                     <div>
                         <div class="item-name">${highlightedLabel}</div>
-                        <div class="item-price">$${this.formatNumber(item.price)}</div>
+                        <div class="item-price">${this.formatAmount(item.price)}</div>
                     </div>
                 </div>
                 <div class="item-description">${highlightedDescription}</div>
@@ -386,7 +409,7 @@ class BlackmarketUI {
         if (this.cart.length === 0) {
             emptyCart.style.display = 'flex';
             cartItems.style.display = 'none';
-            totalAmount.textContent = '$0';
+            totalAmount.textContent = this.formatAmount(0);
             purchaseBtn.classList.add('disabled');
             purchaseBtn.disabled = true;
             return;
@@ -399,7 +422,7 @@ class BlackmarketUI {
 
         // Calculate total
         const total = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        totalAmount.textContent = `$${this.formatNumber(total)}`;
+        totalAmount.textContent = this.formatAmount(total);
 
         // Render cart items
         cartItems.innerHTML = '';
@@ -410,7 +433,7 @@ class BlackmarketUI {
             cartItem.innerHTML = `
                 <div class="cart-item-header">
                     <div class="cart-item-name">${item.label}</div>
-                    <div class="cart-item-price">$${this.formatNumber(item.price * item.quantity)}</div>
+                    <div class="cart-item-price">${this.formatAmount(item.price * item.quantity)}</div>
                 </div>
                 <div class="cart-item-controls">
                     <div class="quantity-controls">
@@ -458,7 +481,7 @@ class BlackmarketUI {
 
         // Calculate total
         const total = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        modalTotal.textContent = `$${this.formatNumber(total)}`;
+        modalTotal.textContent = this.formatAmount(total);
 
         // Render summary
         summary.innerHTML = '';
@@ -469,9 +492,9 @@ class BlackmarketUI {
             summaryItem.innerHTML = `
                 <div>
                     <div class="summary-item-name">${item.label}</div>
-                    <div class="summary-item-details">Quantity: ${item.quantity} × $${this.formatNumber(item.price)}</div>
+                    <div class="summary-item-details">Quantity: ${item.quantity} × ${this.formatAmount(item.price)}</div>
                 </div>
-                <div class="summary-item-price">$${this.formatNumber(item.price * item.quantity)}</div>
+                <div class="summary-item-price">${this.formatAmount(item.price * item.quantity)}</div>
             `;
 
             summary.appendChild(summaryItem);
@@ -513,21 +536,12 @@ class BlackmarketUI {
             const currencyAmountElement = document.getElementById('currency-amount');
             
             if (currencyTypeElement && currencyAmountElement) {
-                // Format currency type for display
-                let displayType = data.currencyType;
-                if (data.currencyType === 'cash') {
-                    displayType = 'Cash';
-                } else if (data.currencyType === 'bank') {
-                    displayType = 'Bank';
-                } else {
-                    // For custom currencies, capitalize first letter
-                    displayType = data.currencyType.charAt(0).toUpperCase() + data.currencyType.slice(1);
-                }
+                const display = this.getCurrencyDisplay(data.currencyType);
+
+                currencyTypeElement.textContent = display.label;
+                currencyAmountElement.textContent = this.formatAmount(data.amount, data.currencyType);
                 
-                currencyTypeElement.textContent = displayType;
-                currencyAmountElement.textContent = this.formatNumber(data.amount);
-                
-                console.log('Updated player money:', displayType, '$' + this.formatNumber(data.amount));
+                console.log('Updated player money:', display.label, this.formatAmount(data.amount, data.currencyType));
             } else {
                 console.log('Currency elements not found, retrying in 200ms...');
                 // Retry if elements not found
@@ -541,18 +555,9 @@ class BlackmarketUI {
         const currencyAmountElement = document.getElementById('currency-amount');
         
         if (currencyTypeElement && currencyAmountElement) {
-            // Format currency type based on config
-            let displayType = this.config.currency;
-            if (this.config.currency === 'cash') {
-                displayType = 'Cash';
-            } else if (this.config.currency === 'bank') {
-                displayType = 'Bank';
-            } else {
-                // For custom currencies, capitalize first letter
-                displayType = this.config.currency.charAt(0).toUpperCase() + this.config.currency.slice(1);
-            }
-            
-            currencyTypeElement.textContent = displayType;
+            const display = this.getCurrencyDisplay();
+
+            currencyTypeElement.textContent = display.label;
             currencyAmountElement.textContent = '...'; // Loading indicator
         }
     }

@@ -268,7 +268,9 @@ end
 local function handleInteraction()
     local lock = getNearestLock()
     if not lock then
-        clientNotify(_('notify_invalid_lock'), 'error')
+        if DebugEnabled then
+            clientNotify(_('notify_invalid_lock'), 'error')
+        end
         return
     end
     if lock.hidden == false then

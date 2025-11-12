@@ -879,5 +879,86 @@ return {
             image = "rentalpapers.png",
         },
     },
+    ['fishingrod1'] = {
+        label = 'Fishing Rod',
+        consume = 0,
+        stack = false,
+        weight = 80,
+        client = {
+            image = 'fishingrod.png'
+        }
+    },
+    ['commonbait'] = {
+        label = 'Common bait',
+        consume = 1,
+        stack = true,
+        weight = 5,
+        client = {
+            image = 'commonbait.png'
+        }
+    },
+    ['fish'] = {
+        label = 'Common Fish',
+        weight = 5,
+        client = {
+            image = 'fish.png',
+        },
+        stack = true,
+        consume = 0,
+    },
+    ['dolphin'] = {
+        label = 'Dolphin',
+        weight = 50,
+        client = {
+            image = 'dolphin.png',
+        },
+        stack = true,
+        consume = 0,
+    },
+    ['hammershark'] = {
+        label = 'Hammer Shark',
+        weight = 50,
+        client = {
+            image = 'hammershark.png',
+        },
+        stack = true,
+        consume = 0,
+    },
+    ['tigershark'] = {
+        label = 'Tiger Shark',
+        weight = 50,
+        client = {
+            image = 'tigershark.png',
+        },
+        stack = true,
+        consume = 0,
+    },
+    ['killerwhale'] = {
+        label = 'Killer Whale',
+        weight = 50,
+        client = {
+            image = 'killerwhale.png',
+        },
+        stack = true,
+        consume = 0,
+    },
+    ['humpback'] = {
+        label = 'Humpback',
+        weight = 200,
+        client = {
+            image = 'humpback.png',
+        },
+        stack = true,
+        consume = 0,
+    },
+    ['stingray'] = {
+        label = 'Stingray',
+        weight = 20,
+        client = {
+            image = 'stingray.png',
+        },
+        stack = true,
+        consume = 0,
+    },
 }
 

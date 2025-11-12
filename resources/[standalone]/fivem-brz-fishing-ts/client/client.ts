@@ -19,6 +19,19 @@ TriggerEvent(
   []
 );
 
+CreateThread(() => {
+  const blip = AddBlipForCoord(2813.74, -1511.85, 24.5);
+
+  SetBlipSprite(blip, 68); // Hook icon
+  SetBlipDisplay(blip, 4);
+  SetBlipScale(blip, 0.9);
+  SetBlipColour(blip, 38);
+  SetBlipAsShortRange(blip, true);
+  BeginTextCommandSetBlipName("STRING");
+  AddTextComponentString(t("fish_blip_name") || "Fishing Pier");
+  EndTextCommandSetBlipName(blip);
+});
+
 onNet("brz-fishing:startFishing", (fishId: keyof Fish) =>
   startFishing(GetPlayerServerId(PlayerId()), fishId)
 );
@@ -38,3 +51,5 @@ const changeFishingState = () => {
     setState("not-fishing");
   }
 };
+
+emit("ox_inventory:loadItems");

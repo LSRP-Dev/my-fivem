@@ -35,4 +35,8 @@ Locales['en'] = {
     command_usage_debug = 'Lock debug toggled: %s',
     log_unlock_success = 'Unlock success %s by %s',
     log_unlock_fail = 'Unlock failed %s by %s',
+    admin_select_door_ui = 'Aim at a registered door and left click. Right click to cancel.',
+    admin_select_door_fail = 'Door selection failed.',
+    admin_select_door_not_registered = 'This entity is not a registered door.',
+    admin_select_door_cancel = 'Door selection cancelled.',
 }

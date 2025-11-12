@@ -104,7 +104,7 @@ function StatusBanner({ status }) {
   return <div className={`admin-banner ${status.type}`}>{status.text}</div>
 }
 
-function AdminPanel({ visible }) {
+function AdminPanel({ visible, doorSelection }) {
   const [locks, setLocks] = useState([])
   const [filter, setFilter] = useState('')
   const [selectedId, setSelectedId] = useState(null)
@@ -117,17 +117,7 @@ function AdminPanel({ visible }) {
   const [updating, setUpdating] = useState(false)
 
   useEffect(() => {
-    if (!visible) {
-      setLocks([])
-      setFilter('')
-      setSelectedId(null)
-      setPasswordEdit('')
-      setForm(initialForm)
-      setStatus(null)
-      setDoorLabel('')
-      return
-    }
-
+    if (!visible) return
     const loadLocks = async () => {
       setLoading(true)
       const result = await fetchNui('locksAdmin:getLocks')
@@ -150,6 +140,33 @@ function AdminPanel({ visible }) {
 
     loadLocks()
   }, [visible])
+
+  useEffect(() => {
+    if (!doorSelection) return
+    const coords = doorSelection.coords || {}
+    const format = (value) => {
+      const number = Number(value)
+      return Number.isFinite(number) ? number.toFixed(2) : ''
+    }
+    setForm((prev) => ({
+      ...prev,
+      targetDoorId: doorSelection.doorId || prev.targetDoorId,
+      useDoor: true,
+      coords: {
+        x: format(coords.x),
+        y: format(coords.y),
+        z: format(coords.z)
+      },
+      radius:
+        doorSelection.radius !== undefined && doorSelection.radius !== null
+          ? String(doorSelection.radius)
+          : prev.radius
+    }))
+    setDoorLabel(doorSelection.label || doorSelection.doorId || '')
+    setStatus({ type: 'success', text: `Selected door ${doorSelection.doorId || ''}` })
+    const timeout = setTimeout(() => setStatus(null), 3500)
+    return () => clearTimeout(timeout)
+  }, [doorSelection])
 
   const selectedLock = useMemo(() => locks.find((lock) => lock.id === selectedId) || null, [locks, selectedId])
 
@@ -201,8 +218,6 @@ function AdminPanel({ visible }) {
   }
 
   const handleRemove = async (lock) => {
-    const confirmed = window.confirm(`Remove lock ${lock.id}?`)
-    if (!confirmed) return
     const result = await fetchNui('locksAdmin:removeLock', { id: lock.id })
     if (!result) {
       notify('error', 'Failed to remove lock.')
@@ -214,6 +229,10 @@ function AdminPanel({ visible }) {
     } else {
       notify('error', result.message || 'Failed to remove lock.')
     }
+  }
+
+  const handleSelectDoor = async () => {
+    await fetchNui('locksAdmin:startDoorSelect')
   }
 
   const handleUpdatePassword = async () => {
@@ -531,6 +550,9 @@ function AdminPanel({ visible }) {
                       >
                         Fetch door
                       </button>
+                      <button type="button" className="admin-button tiny" onClick={handleSelectDoor}>
+                        Select door in world
+                      </button>
                     </div>
                     {doorLabel && <span className="door-label">{doorLabel}</span>}
                   </div>
@@ -608,6 +630,7 @@ export default function App() {
   const [passwordState, setPasswordState] = useState(initialPasswordState)
   const [passwordValue, setPasswordValue] = useState('')
   const [adminVisible, setAdminVisible] = useState(false)
+  const [doorSelection, setDoorSelection] = useState(null)
 
   useEffect(() => {
     const handler = (event) => {
@@ -629,6 +652,15 @@ export default function App() {
         setAdminVisible(true)
       } else if (data.action === 'closeAdmin') {
         setAdminVisible(false)
+      } else if (data.action === 'doorSelected') {
+        setAdminVisible(true)
+        setDoorSelection({
+          doorId: data.doorId,
+          label: data.label,
+          coords: data.coords,
+          radius: data.radius,
+          at: Date.now()
+        })
       }
     }
 
@@ -639,7 +671,7 @@ export default function App() {
   return (
     <>
       <PasswordModal state={passwordState} value={passwordValue} setValue={setPasswordValue} />
-      <AdminPanel visible={adminVisible} />
+      <AdminPanel visible={adminVisible} doorSelection={doorSelection} />
     </>
   )
 }

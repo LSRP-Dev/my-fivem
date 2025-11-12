@@ -379,10 +379,11 @@ body {
 
 .door-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   gap: 10px;
   margin-top: 4px;
+  flex-wrap: wrap;
 }
 
 .door-label {

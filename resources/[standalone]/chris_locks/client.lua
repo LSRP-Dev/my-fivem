@@ -14,6 +14,8 @@ local DebugEnabled = Config.Debug or false
 local IsPasswordOpen = false
 local ActiveLockId = nil
 local AdminUIOpen = false
+local DoorSelectActive = false
+local DoorSelectEntity = 0
 
 local function clientNotify(message, type)
     if Utils.resourceActive('ox_lib') and lib and lib.notify then
@@ -89,6 +91,34 @@ local function closeAdminUI()
     SendNUIMessage({ action = 'closeAdmin' })
 end
 
+local function stopDoorSelection(reopen)
+    if DoorSelectEntity and DoorSelectEntity ~= 0 then
+        SetEntityDrawOutline(DoorSelectEntity, false)
+        DoorSelectEntity = 0
+    end
+    if DoorSelectActive then
+        DoorSelectActive = false
+        if lib and lib.hideTextUI then
+            lib.hideTextUI()
+        end
+        EnableAllControlActions(0)
+    end
+    if reopen then
+        openAdminUI()
+    end
+end
+
+local function startDoorSelection()
+    if DoorSelectActive then return end
+    DoorSelectActive = true
+    DoorSelectEntity = 0
+    if lib and lib.showTextUI then
+        lib.showTextUI(_('admin_select_door_ui'))
+    else
+        clientNotify(_('admin_select_door_ui'), 'inform')
+    end
+end
+
 local function openPasswordNUI(lock)
     if IsPasswordOpen then return end
     IsPasswordOpen = true
@@ -148,6 +178,12 @@ end)
 RegisterNUICallback('locksAdmin:close', function(_, cb)
     cb(1)
     closeAdminUI()
+end)
+
+RegisterNUICallback('locksAdmin:startDoorSelect', function(_, cb)
+    cb(1)
+    closeAdminUI()
+    startDoorSelection()
 end)
 
 RegisterNUICallback('locksAdmin:getLocks', function(_, cb)
@@ -233,6 +269,30 @@ RegisterNetEvent('chris_locks:client:setLocks', function(data)
     handleLocksUpdate(data)
 end)
 
+RegisterNetEvent('chris_locks:client:doorSelectResult', function(payload)
+    stopDoorSelection(true)
+    if payload and payload.error then
+        clientNotify(payload.error, 'error')
+        return
+    end
+    if not payload or not payload.doorId then
+        clientNotify(_('admin_select_door_fail'), 'error')
+        return
+    end
+    if lib and lib.hideTextUI then
+        lib.hideTextUI()
+    end
+    Citizen.SetTimeout(150, function()
+        SendNUIMessage({
+            action = 'doorSelected',
+            doorId = payload.doorId,
+            label = payload.label,
+            coords = payload.coords,
+            radius = payload.radius,
+        })
+    end)
+end)
+
 CreateThread(function()
     requestLocks()
     while true do
@@ -257,6 +317,92 @@ CreateThread(function()
     end
 end)
 
+CreateThread(function()
+    local outlineColorSet = false
+    while true do
+        if DoorSelectActive then
+            Wait(0)
+            DisableControlAction(0, 24, true)
+            DisableControlAction(0, 25, true)
+            DisableControlAction(0, 47, true)
+            DisableControlAction(0, 140, true)
+            DisableControlAction(0, 141, true)
+            DisableControlAction(0, 142, true)
+            DisableControlAction(0, 257, true)
+
+            local hit, entity, hitCoords = false, 0, nil
+            if lib and lib.raycast and lib.raycast.cam then
+                hit, entity, hitCoords = lib.raycast.cam(1 | 16)
+            end
+            if DoorSelectEntity ~= entity then
+                if DoorSelectEntity and DoorSelectEntity ~= 0 then
+                    SetEntityDrawOutline(DoorSelectEntity, false)
+                end
+                DoorSelectEntity = entity
+                if not outlineColorSet then
+                    outlineColorSet = true
+                    SetEntityDrawOutlineShader(1)
+                    SetEntityDrawOutlineColor(108, 141, 255, 255)
+                end
+                if entity and entity ~= 0 and DoesEntityExist(entity) then
+                    SetEntityDrawOutline(entity, true)
+                end
+            end
+
+            if hit and entity and entity ~= 0 and DoesEntityExist(entity) then
+                local entityType = GetEntityType(entity)
+                if entityType == 3 then
+                    local pedCoords = GetEntityCoords(PlayerPedId())
+                    DrawLine(pedCoords.x, pedCoords.y, pedCoords.z, hitCoords.x, hitCoords.y, hitCoords.z, 108, 141, 255, 200)
+                end
+                if IsDisabledControlJustPressed(0, 24) then
+                    if entityType ~= 3 then
+                        clientNotify(_('admin_select_door_fail'), 'error')
+                    else
+                        local doorId
+                        if Utils.resourceActive('ox_doorlock') and exports.ox_doorlock and exports.ox_doorlock.getDoorIdFromEntity then
+                            doorId = exports.ox_doorlock:getDoorIdFromEntity(entity)
+                        end
+                        if not doorId then
+                            clientNotify(_('admin_select_door_not_registered'), 'error')
+                        else
+                            local data = lib.callback.await('chris_locks:getDoorInfo', false, doorId)
+                            if not data or not data.coords then
+                                clientNotify(_('admin_select_door_not_registered'), 'error')
+                            else
+                                local coords = data.coords or {}
+                                if data.doors and data.doors[1] and data.doors[1].coords then
+                                    coords = data.doors[1].coords
+                                end
+                                TriggerEvent('chris_locks:client:doorSelectResult', {
+                                    doorId = doorId,
+                                    label = data.label or data.id or doorId,
+                                    coords = {
+                                        x = coords.x or 0.0,
+                                        y = coords.y or 0.0,
+                                        z = coords.z or 0.0,
+                                    },
+                                    radius = data.distance,
+                                })
+                            end
+                        end
+                    end
+                elseif IsDisabledControlJustPressed(0, 25) or IsDisabledControlJustPressed(0, 200) or IsDisabledControlJustPressed(0, 202) then
+                    stopDoorSelection(true)
+                    clientNotify(_('admin_select_door_cancel'), 'inform')
+                end
+            else
+                if DoorSelectEntity and DoorSelectEntity ~= 0 then
+                    SetEntityDrawOutline(DoorSelectEntity, false)
+                    DoorSelectEntity = 0
+                end
+            end
+        else
+            Wait(200)
+        end
+    end
+end)
+
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
     if IsPasswordOpen then
@@ -265,4 +411,5 @@ AddEventHandler('onResourceStop', function(resource)
     if AdminUIOpen then
         closeAdminUI()
     end
+    stopDoorSelection(false)
 end)

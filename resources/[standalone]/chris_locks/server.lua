@@ -323,12 +323,101 @@ local function removeLock(lockId)
     return true
 end
 
+local function findLockByDoorId(doorId)
+    for id, lock in pairs(Locks) do
+        if lock.targetDoorId == doorId then
+            return lock
+        end
+    end
+end
+
 local function canUseCommand(source)
     if source == 0 then return true end
     if Config.DebugPermission and IsPlayerAceAllowed(source, Config.DebugPermission) then
         return true
     end
     return false
+end
+
+local function createLockFromData(source, data)
+    if not canUseCommand(source) then
+        return false, _('notify_not_authorized')
+    end
+
+    if not data or type(data) ~= 'table' then
+        return false, _('command_usage_addlock')
+    end
+
+    local id = data.id and data.id:lower()
+    if not id or id == '' then
+        return false, _('command_usage_addlock')
+    end
+
+    if Locks[id] then
+        return false, _('notify_exists')
+    end
+
+    local lockType = data.type
+    if not lockType or not LockTypes[lockType] then
+        return false, _('command_usage_addlock')
+    end
+
+    local targetDoorId = data.targetDoorId
+    if not targetDoorId or targetDoorId == '' then
+        return false, _('command_usage_addlock')
+    end
+
+    local coords = data.coords
+    if Utils.resourceActive('ox_doorlock') then
+        local door = exports.ox_doorlock:getDoor(targetDoorId)
+        if not door then
+            return false, _('door_not_registered', targetDoorId)
+        end
+        coords = door.coords
+        targetDoorId = door.id
+    end
+
+    if not coords then
+        return false, _('command_usage_addlock')
+    end
+
+    local lock = {
+        id = id,
+        type = lockType,
+        coords = ensureVector(coords),
+        radius = tonumber(data.radius) or 2.5,
+        hidden = data.hidden ~= false,
+        targetDoorId = targetDoorId,
+        unlockDuration = tonumber(data.unlockDuration) or Config.DefaultUnlockDuration,
+        data = {},
+    }
+
+    local credential = data.credential
+    if lockType == 'password' then
+        if not credential or credential == '' then
+            return false, _('password_required')
+        end
+        lock.data.password = credential
+    elseif lockType == 'item' then
+        if not credential or credential == '' then
+            return false, _('notify_missing_item', 'item')
+        end
+        lock.data.item = credential
+    elseif lockType == 'job' then
+        local jobs = splitList(credential)
+        if #jobs == 0 then
+            return false, _('notify_missing_job')
+        end
+        lock.data.jobs = jobs
+    elseif lockType == 'owner' then
+        if not credential or credential == '' then
+            return false, _('notify_missing_owner')
+        end
+        lock.data.ownerIdentifier = credential
+    end
+
+    registerLock(lock)
+    return true, _('notify_added', id)
 end
 
 AddEventHandler('onResourceStart', function(resource)
@@ -380,50 +469,32 @@ RegisterCommand('addlock', function(source, args)
         notify(source, _('notify_not_authorized'), 'error')
         return
     end
+
     local id = args[1]
     local lockType = args[2]
-    if not id or not lockType then
-        notify(source, _('command_usage_addlock'), 'error')
-        return
-    end
-    if Locks[id] then
-        notify(source, _('notify_exists'), 'error')
-        return
-    end
+    local credential = args[3]
     local x, y, z = tonumber(args[4]), tonumber(args[5]), tonumber(args[6])
     local radius = tonumber(args[7]) or 2.5
     local targetDoorId = args[8]
     local duration = tonumber(args[9]) or Config.DefaultUnlockDuration
     local hidden = args[10] ~= 'false'
 
-    if not (x and y and z and targetDoorId) then
-        notify(source, _('command_usage_addlock'), 'error')
-        return
-    end
-
-    local lock = {
+    local success, message = createLockFromData(source, {
         id = id,
         type = lockType,
-        coords = vector3(x, y, z),
+        credential = credential,
+        coords = x and y and z and { x = x, y = y, z = z } or nil,
         radius = radius,
-        hidden = hidden,
         targetDoorId = targetDoorId,
         unlockDuration = duration,
-        data = {},
-    }
+        hidden = hidden
+    })
 
-    if lockType == 'password' then
-        lock.data.password = args[3]
-    elseif lockType == 'item' then
-        lock.data.item = args[3]
-    elseif lockType == 'job' then
-        lock.data.jobs = splitList(args[3])
-    elseif lockType == 'owner' then
-        lock.data.ownerIdentifier = args[3]
+    if success then
+        notify(source, message, 'success')
+    else
+        notify(source, message or _('command_usage_addlock'), 'error')
     end
-
-    registerLock(lock)
-    notify(source, _('notify_added', id), 'success')
 end, false)
 
 RegisterCommand('removelock', function(source, args)
@@ -502,6 +573,38 @@ exports('addAuthorizedPlayer', function(lockId, identifier)
     lock.data.authorizedPlayers = lock.data.authorizedPlayers or {}
     lock.data.authorizedPlayers[identifier] = true
     return true
+end)
+
+lib.callback.register('chris_locks:canManage', function(source)
+    return canUseCommand(source)
+end)
+
+lib.callback.register('chris_locks:getDoorInfo', function(source, doorId)
+    if not doorId or not Utils.resourceActive('ox_doorlock') then return nil end
+    return exports.ox_doorlock:getDoor(doorId)
+end)
+
+lib.callback.register('chris_locks:createLock', function(source, data)
+    local success, message = createLockFromData(source, data)
+    return success, message
+end)
+
+lib.callback.register('chris_locks:removeLock', function(source, data)
+    if not canUseCommand(source) then
+        return false, _('notify_not_authorized')
+    end
+    local id = data and data.id
+    if (not id or id == '') and data and data.doorId then
+        local lock = findLockByDoorId(data.doorId)
+        id = lock and lock.id or id
+    end
+    if not id or id == '' then
+        return false, _('notify_invalid_lock')
+    end
+    if removeLock(id) then
+        return true, _('notify_removed', id)
+    end
+    return false, _('notify_invalid_lock')
 end)
 
 local function ensureVector(value)

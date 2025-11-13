@@ -20,8 +20,8 @@ return {
             coords = vec3(1261.92, -566.37, 68.49),
         },
         {
-            label = 'Del Perro Pier Parking',
-            coords = vec3(-1615.47, -1083.63, 13.02),
+            label = 'Weazel Plaza Forecourt',
+            coords = vec3(-576.42, -932.05, 28.86),
         },
         {
             label = 'Vinewood Bowl Lot',

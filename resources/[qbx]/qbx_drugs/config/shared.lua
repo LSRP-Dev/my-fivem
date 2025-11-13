@@ -33,7 +33,7 @@ return {
         {
             name = 'tuner',
             label = 'Tuner Alley Plug',
-            coords = vec4(154.56, -3014.47, 7.04, 269.87),
+            coords = vec4(156.1249, -3012.1111, 6.0219, 241.9173),
             blip = {
                 enabled = true,
                 sprite = 514,

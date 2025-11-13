@@ -25,55 +25,88 @@ end)
 
 local function addDealerTarget(ped, name, data)
     if not config.useTarget then return end
-    local openOption = {
-        name = 'dealer_open_shop_' .. name,
-        icon = 'fas fa-user-secret',
-        label = locale('info.target_openshop'),
-        onSelect = function()
-            currentDealer = name
-            openDealerShop()
-        end,
-        canInteract = function()
-            local hours = GetClockHours()
-            local min = data.time.min
-            local max = data.time.max
-            if max < min then
-                return hours <= max or hours >= min
-            end
-            return hours >= min and hours <= max
-        end
-    }
-
-    local deliveryOption = {
-        name = 'dealer_request_delivery_' .. name,
-        icon = 'fas fa-box',
-        label = locale('info.target_request'),
-        onSelect = function()
-            currentDealer = name
-            requestDelivery()
-        end,
-        canInteract = function()
-            if waitingDelivery then return false end
-            local hours = GetClockHours()
-            local min = data.time.min
-            local max = data.time.max
-            if max < min then
-                return hours <= max or hours >= min
-            end
-            return hours >= min and hours <= max
-        end
-    }
-
     if GetResourceState('ox_target') == 'started' then
+        local openOption = {
+            name = 'dealer_open_shop_' .. name,
+            icon = 'fas fa-user-secret',
+            label = locale('info.target_openshop'),
+            onSelect = function()
+                currentDealer = name
+                openDealerShop()
+            end,
+            canInteract = function()
+                local hours = GetClockHours()
+                local min = data.time.min
+                local max = data.time.max
+                if max < min then
+                    return hours <= max or hours >= min
+                end
+                return hours >= min and hours <= max
+            end
+        }
+
+        local deliveryOption = {
+            name = 'dealer_request_delivery_' .. name,
+            icon = 'fas fa-box',
+            label = locale('info.target_request'),
+            onSelect = function()
+                currentDealer = name
+                requestDelivery()
+            end,
+            canInteract = function()
+                if waitingDelivery then return false end
+                local hours = GetClockHours()
+                local min = data.time.min
+                local max = data.time.max
+                if max < min then
+                    return hours <= max or hours >= min
+                end
+                return hours >= min and hours <= max
+            end
+        }
+
         exports.ox_target:addLocalEntity(ped, {
             openOption,
             deliveryOption
         })
     elseif GetResourceState('qb-target') == 'started' then
+        local function withinHours()
+            local hours = GetClockHours()
+            local min = data.time.min
+            local max = data.time.max
+            if max < min then
+                return hours <= max or hours >= min
+            end
+            return hours >= min and hours <= max
+        end
+
         exports['qb-target']:AddTargetEntity(ped, {
             options = {
-                openOption,
-                deliveryOption
+                {
+                    name = 'dealer_open_shop_' .. name,
+                    icon = 'fas fa-user-secret',
+                    label = locale('info.target_openshop'),
+                    action = function()
+                        currentDealer = name
+                        openDealerShop()
+                    end,
+                    canInteract = function()
+                        return withinHours()
+                    end
+                },
+                {
+                    name = 'dealer_request_delivery_' .. name,
+                    icon = 'fas fa-box',
+                    label = locale('info.target_request'),
+                    action = function()
+                        currentDealer = name
+                        requestDelivery()
+                    end,
+                    canInteract = function()
+                        if waitingDelivery then return false end
+                        return withinHours()
+                    end
+                }
             },
             distance = 1.5
         })

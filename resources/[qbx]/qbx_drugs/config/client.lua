@@ -1,7 +1,8 @@
 local useTargetConvar = GetConvar('UseTarget', 'false')
+local targetDetected = GetResourceState('ox_target') == 'started' or GetResourceState('qb-target') == 'started'
 
 return {
-    useTarget = useTargetConvar == 'true',
+    useTarget = useTargetConvar == 'true' or targetDetected,
     successChance = 65,
     robberyChance = 15,
     minimumDrugSalePolice = 2,

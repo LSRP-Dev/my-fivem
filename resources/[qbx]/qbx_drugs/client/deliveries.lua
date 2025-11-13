@@ -23,8 +23,12 @@ AddStateBagChangeHandler('isLoggedIn', nil, function(_, _, value)
     end
 end)
 
+local function isTargetActive()
+    return config.useTarget or GetResourceState('ox_target') == 'started' or GetResourceState('qb-target') == 'started'
+end
+
 local function addDealerTarget(ped, name, data)
-    if not config.useTarget then return end
+    if not isTargetActive() then return end
     if GetResourceState('ox_target') == 'started' then
         local openOption = {
             name = 'dealer_open_shop_' .. name,
@@ -114,7 +118,7 @@ local function addDealerTarget(ped, name, data)
 end
 
 local function removeDealerTarget(ped, name)
-    if not config.useTarget or not DoesEntityExist(ped) then return end
+    if not DoesEntityExist(ped) or not isTargetActive() then return end
     if GetResourceState('ox_target') == 'started' then
         exports.ox_target:removeLocalEntity(ped, 'dealer_open_shop_' .. name)
         exports.ox_target:removeLocalEntity(ped, 'dealer_request_delivery_' .. name)
@@ -370,7 +374,7 @@ function AwaitingInput()
 end
 
 function InitZones()
-    if config.useTarget then
+    if isTargetActive() then
         return
     else
         ---@TODO Move to ox_lib Zoning

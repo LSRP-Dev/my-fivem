@@ -14,7 +14,8 @@ local maps = {
     'DLCiplLoader',
     'vinewood_house',
     'dip_hookies',
-    'dip_mechanic'
+    'dip_mechanic',
+    'forest_mansion'
 }
 
 CreateThread(function()

@@ -4,7 +4,7 @@ Config.Debug = false
 
 Config.Storage = {
     Mode = 'json', -- json or mysql
-    JsonDirectory = 'cs_heistbuilder/configs/heists',
+    JsonDirectory = 'configs/heists',
     MySQLTable = 'heistbuilder_heists'
 }
 

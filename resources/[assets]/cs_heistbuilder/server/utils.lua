@@ -2,33 +2,120 @@ local Utils = CS_HEIST_SHARED_UTILS or {}
 local Storage = {}
 local HeistCache = {}
 
-local resourcePath = GetResourcePath(GetCurrentResourceName())
-local jsonDir = Config.Storage.JsonDirectory or 'configs/heists'
+local resourceName = GetCurrentResourceName()
+local resourcePath = GetResourcePath(resourceName)
+
+local function normaliseRelativePath(path)
+    path = (path or 'configs/heists'):gsub('\\', '/')
+    path = path:gsub('^%./', '')
+    path = path:gsub('/+$', '')
+    local prefix = resourceName .. '/'
+    if path:sub(1, #prefix) == prefix then
+        path = path:sub(#prefix + 1)
+    end
+    if path == '' then
+        path = 'configs/heists'
+    end
+    return path
+end
+
+local jsonDir = normaliseRelativePath(Config.Storage.JsonDirectory)
 local absoluteDir = ('%s/%s'):format(resourcePath, jsonDir)
+local isWindows = package.config:sub(1, 1) == '\\'
 local isUsingJson = Config.Storage.Mode == 'json'
 local jsonPrepared = false
 
 local function ensureDir()
     if not isUsingJson or jsonPrepared then return end
-    os.execute(('mkdir \"%s\" 2>nul'):format(absoluteDir))
+    if isWindows then
+        os.execute(('cmd /c if not exist \"%s\" mkdir \"%s\"'):format(absoluteDir, absoluteDir))
+    else
+        os.execute(('mkdir -p \"%s\"'):format(absoluteDir))
+    end
     jsonPrepared = true
+end
+
+local function buildDirCommand(path, redirect)
+    if isWindows then
+        if redirect then
+            return ('cmd /c dir \"%s\" /b > \"%s\"'):format(path, redirect)
+        end
+        return ('cmd /c dir \"%s\" /b'):format(path)
+    else
+        if redirect then
+            return ('ls -1 \"%s\" > \"%s\"'):format(path, redirect)
+        end
+        return ('ls -1 \"%s\"'):format(path)
+    end
+end
+
+local function captureDirectoryListing()
+    local contents
+    if io and io.popen then
+        local handle = io.popen(buildDirCommand(absoluteDir))
+        if handle then
+            if type(handle.read) == 'function' then
+                local ok, result = pcall(handle.read, handle, '*a')
+                if ok then contents = result end
+            end
+            if handle.close then handle:close() end
+        end
+    end
+
+    if contents and contents ~= '' then
+        return contents
+    end
+
+    if not os.tmpname or not os.execute then
+        return ''
+    end
+
+    local tmpPath = os.tmpname()
+    if not tmpPath then return '' end
+
+    if isWindows and not tmpPath:match('^%a:[\\/]') then
+        local tempDir = os.getenv('TEMP') or os.getenv('TMP') or resourcePath
+        tempDir = tempDir:gsub('[\\/]+$', '')
+        tmpPath = ('%s\\%s'):format(tempDir, tmpPath:gsub('^\\', ''))
+    end
+
+    local command = buildDirCommand(absoluteDir, tmpPath)
+    local ok = os.execute(command)
+    if not ok then
+        os.remove(tmpPath)
+        return ''
+    end
+
+    local file = io.open(tmpPath, 'r')
+    if not file then
+        os.remove(tmpPath)
+        return ''
+    end
+
+    contents = file:read('*a') or ''
+    file:close()
+    os.remove(tmpPath)
+    return contents
+end
+
+local function getRelativeJsonPath(fileName)
+    return ('%s/%s'):format(jsonDir, fileName)
 end
 
 local function readJsonFiles()
     ensureDir()
     local heists = {}
-    local handle = io.popen(('dir \"%s\" /b'):format(absoluteDir))
-    if not handle then return heists end
-    for file in handle:read('*a'):gmatch('[^\r\n]+') do
+    local listing = captureDirectoryListing()
+    if listing == '' then return heists end
+    for file in listing:gmatch('[^\r\n]+') do
         if file:match('%.json$') then
-            local content = LoadResourceFile(GetCurrentResourceName(), ('configs/heists/%s'):format(file))
+            local content = LoadResourceFile(resourceName, getRelativeJsonPath(file))
             if content then
                 local data = json.decode(content)
                 if data then heists[#heists + 1] = data end
             end
         end
     end
-    handle:close()
     return heists
 end
 
@@ -64,8 +151,8 @@ end
 
 local function saveJson(heist)
     ensureDir()
-    local rel = ('configs/heists/%s.json'):format(heist.id)
-    SaveResourceFile(GetCurrentResourceName(), rel, json.encode(heist, { indent = true }), -1)
+    local rel = getRelativeJsonPath(('%s.json'):format(heist.id))
+    SaveResourceFile(resourceName, rel, json.encode(heist, { indent = true }), -1)
 end
 
 local function saveMysql(heist)
@@ -93,7 +180,7 @@ end
 function Storage.removeHeist(id)
     HeistCache[id] = nil
     if isUsingJson then
-        SaveResourceFile(GetCurrentResourceName(), ('configs/heists/%s.json'):format(id), '', 0)
+        SaveResourceFile(resourceName, getRelativeJsonPath(('%s.json'):format(id)), '', 0)
     else
         MySQL.update(('DELETE FROM %s WHERE heist_id = ?'):format(Config.Storage.MySQLTable), { id })
     end

@@ -16,7 +16,8 @@ local maps = {
     'dip_hookies',
     'dip_mechanic',
     'forest_mansion',
-    'floresta'
+    'floresta',
+    'Mirror-Park-Clubhouse'
 }
 
 CreateThread(function()

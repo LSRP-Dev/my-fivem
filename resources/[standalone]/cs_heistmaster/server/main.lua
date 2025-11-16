@@ -187,6 +187,11 @@ RegisterNetEvent('cs_heistmaster:requestStart', function(heistId)
 
     -- send guards (if any) to everyone
     TriggerClientEvent('cs_heistmaster:client:spawnGuards', -1, heistId, heist.guards or {})
+
+    -- spawn vault door for Fleeca banks
+    if heist.vault and heist.vault.coords then
+        TriggerClientEvent('cs_heistmaster:fleeca:spawnVaultDoor', -1, heistId, heist.vault.coords, heist.vault.heading or 160.0)
+    end
 end)
 
 ----------------------------------------------------------------
@@ -346,6 +351,20 @@ RegisterNetEvent('cs_heistmaster:safeReward', function(heistId)
             end
         end
     end
+end)
+
+----------------------------------------------------------------
+-- Vault door control (server-side)
+----------------------------------------------------------------
+
+RegisterNetEvent('cs_heistmaster:fleeca:openVaultDoor', function(heistId)
+    local src = source
+    local heist = Heists[heistId]
+    if not heist or heist.heistType ~= 'fleeca' then return end
+
+    -- Broadcast door opening to all clients
+    TriggerClientEvent('cs_heistmaster:fleeca:openVaultDoor', -1, heistId)
+    debugPrint(('Vault door opened for heist: %s'):format(heistId))
 end)
 
 ----------------------------------------------------------------

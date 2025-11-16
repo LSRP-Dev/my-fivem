@@ -69,6 +69,11 @@ Config.Heists = {
 
         start = { x = 148.9, y = -1040.1, z = 29.37 },
 
+        vault = {
+            coords = { x = 149.93, y = -1047.52, z = 29.37 },
+            heading = 160.0,
+        },
+
         guards = {
             {
                 coords = { x = 147.6, y = -1045.1, z = 29.37, w = 340.0 },

@@ -5,12 +5,84 @@ local currentHeistId = nil
 local currentStepIndex = 0
 local guards = {}  -- [heistId] = { ped, ... }
 local SpawnedClerks = {}  -- [heistId] = ped
+local VaultDoors = {}  -- [heistId] = door entity
 
 local function debugPrint(...)
     if Config.Debug then
         print('[cs_heistmaster:client]', ...)
     end
 end
+
+------------------------------------------------------
+-- Vault Door System
+------------------------------------------------------
+
+-- Delete default GTA vault door
+CreateThread(function()
+    -- Try to remove the original Fleeca vault door
+    local doorModel = `v_ilev_bk_vaultdoor`
+    local coords = vector3(149.93, -1047.52, 29.37)
+
+    Wait(1500) -- wait for interior load
+
+    local door = GetClosestObjectOfType(coords.x, coords.y, coords.z, 2.0, doorModel, false, false, false)
+
+    if door and door ~= 0 then
+        DeleteEntity(door)
+        debugPrint('Deleted default GTA vault door')
+    end
+end)
+
+-- Spawn custom vault door
+local function spawnVaultDoor(heistId, coords, heading)
+    local model = `hei_prop_heist_sec_door`
+
+    RequestModel(model)
+    while not HasModelLoaded(model) do Wait(0) end
+
+    local door = CreateObject(model, coords.x, coords.y, coords.z, true, true, false)
+    SetEntityHeading(door, heading)
+    FreezeEntityPosition(door, true)
+
+    VaultDoors[heistId] = door
+    debugPrint(('Spawned vault door for heist: %s'):format(heistId))
+end
+
+-- Open vault door with animation and effects
+local function openVaultDoor(heistId)
+    local door = VaultDoors[heistId]
+    if not door or not DoesEntityExist(door) then return end
+
+    local coords = GetEntityCoords(door)
+    local currentHeading = GetEntityHeading(door)
+    local targetHeading = currentHeading - 110.0 -- wide swing open
+
+    FreezeEntityPosition(door, false)
+
+    -- Effects on first frame
+    UseParticleFxAssetNextCall("core")
+    StartParticleFxNonLoopedAtCoord("ent_dst_electrical", coords.x, coords.y, coords.z, 0.0, 0.0, 0.0, 1.0, false, false, false)
+    PlaySoundFromCoord(-1, "VAULT_DOOR_OPEN", coords.x, coords.y, coords.z, "dlc_heist_fleeca_bank_door_sounds", false, 1.0, false)
+    ShakeGameplayCam("SMALL_EXPLOSION_SHAKE", 0.6)
+
+    -- Animate door opening
+    for i = 1, 110 do
+        SetEntityHeading(door, currentHeading - i)
+        Wait(10)
+    end
+
+    FreezeEntityPosition(door, true)
+    debugPrint(('Vault door opened for heist: %s'):format(heistId))
+end
+
+-- Register events for vault door
+RegisterNetEvent("cs_heistmaster:fleeca:spawnVaultDoor", function(heistId, coords, heading)
+    spawnVaultDoor(heistId, coords, heading)
+end)
+
+RegisterNetEvent("cs_heistmaster:fleeca:openVaultDoor", function(heistId)
+    openVaultDoor(heistId)
+end)
 
 ------------------------------------------------------
 -- Helpers
@@ -78,6 +150,15 @@ RegisterNetEvent('cs_heistmaster:client:cleanupHeist', function(heistId)
             DeletePed(clerkPed)
         end
         SpawnedClerks[heistId] = nil
+    end
+
+    -- Cleanup vault door if exists
+    if VaultDoors[heistId] then
+        local door = VaultDoors[heistId]
+        if DoesEntityExist(door) then
+            DeleteEntity(door)
+        end
+        VaultDoors[heistId] = nil
     end
 
     if currentHeistId == heistId then
@@ -236,6 +317,12 @@ local function runHeistThread(heistId, heist)
                             })
 
                             ClearPedTasks(ped)
+                            
+                            -- Open vault door after drilling completes (for Fleeca banks)
+                            if heist.heistType == 'fleeca' and heist.vault then
+                                TriggerServerEvent('cs_heistmaster:fleeca:openVaultDoor', heistId)
+                            end
+                            
                             success = true
                         end
 

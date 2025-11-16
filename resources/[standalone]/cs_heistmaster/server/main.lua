@@ -107,7 +107,8 @@ RegisterNetEvent('cs_heistmaster:requestStart', function(heistId)
 
     -- item check
     if heist.requiredItem and exports['ox_inventory'] then
-        local count = exports['ox_inventory']:Search(src, 'count', heist.requiredItem) or 0
+        local searchResult = exports['ox_inventory']:Search(src, 'count', heist.requiredItem)
+        local count = (type(searchResult) == 'number') and searchResult or 0
         if count <= 0 then
             TriggerClientEvent('ox_lib:notify', src, {
                 description = ('You need a %s to start this heist.'):format(heist.requiredItem),

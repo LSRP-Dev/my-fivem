@@ -3,6 +3,7 @@ local Heists = Config.Heists
 
 local ActiveHeists = {}  -- [id] = { state, lastStart }
 local HeistAlerts = {} -- [heistId] = true if cops already alerted
+local ClerkPanicCooldown = {} -- prevents spam
 
 local function debugPrint(...)
     if Config.Debug then
@@ -291,6 +292,39 @@ RegisterNetEvent('cs_heistmaster:alertPolice', function(heistId, alertType)
             type = 'error'
         })
     end
+end)
+
+----------------------------------------------------------------
+-- Clerk panic / alarm handler
+----------------------------------------------------------------
+
+RegisterNetEvent('cs_heistmaster:clerkPanic', function(heistId)
+    local src = source
+    local heist = Heists[heistId]
+    if not heist or not heist.clerk or not heist.clerk.enabled then return end
+
+    -- prevent double panic spam
+    if ClerkPanicCooldown[heistId] then return end
+    ClerkPanicCooldown[heistId] = true
+
+    -- send police dispatch
+    local msg = ('Clerk panic alarm triggered at %s'):format(heist.label)
+    print('[Heist-Clerk] Panic alarm: ' .. msg)
+
+    -- TODO: integrate your actual dispatch system  
+    TriggerClientEvent('ox_lib:notify', -1, {
+        title = 'Emergency Alert',
+        description = msg,
+        type = 'error'
+    })
+
+    -- indicate heist is alerted
+    HeistAlerts[heistId] = true
+
+    -- cooldown
+    SetTimeout(300000, function()
+        ClerkPanicCooldown[heistId] = nil
+    end)
 end)
 
 ----------------------------------------------------------------

@@ -4,6 +4,7 @@ local Heists = Config.Heists
 local currentHeistId = nil
 local currentStepIndex = 0
 local guards = {}  -- [heistId] = { ped, ... }
+local SpawnedClerks = {}  -- [heistId] = ped
 
 local function debugPrint(...)
     if Config.Debug then
@@ -68,6 +69,15 @@ RegisterNetEvent('cs_heistmaster:client:cleanupHeist', function(heistId)
             if DoesEntityExist(ped) then DeletePed(ped) end
         end
         guards[heistId] = nil
+    end
+
+    -- Cleanup clerk if exists
+    if SpawnedClerks[heistId] then
+        local clerkPed = SpawnedClerks[heistId]
+        if DoesEntityExist(clerkPed) then
+            DeletePed(clerkPed)
+        end
+        SpawnedClerks[heistId] = nil
     end
 
     if currentHeistId == heistId then
@@ -141,7 +151,17 @@ local function runHeistThread(heistId, heist)
 
                         TaskPlayAnim(ped, 'anim@heists@prison_heiststation@cop_reactions', 'console_peek_a', 8.0, -8.0, -1, 1, 0.0, false, false, false)
 
-                        success = lib.skillCheck(step.difficulty or { 'medium', 'medium', 'hard' })
+                        -- Mini game removed - auto success
+                        local hackDuration = step.time or 5000
+                        lib.progressCircle({
+                            duration = hackDuration,
+                            label = step.label or 'Hacking...',
+                            position = 'bottom',
+                            useWhileDead = false,
+                            canCancel = false,
+                            disable = { move = true, car = true, combat = true },
+                        })
+                        success = true
                         ClearPedTasks(ped)
 
                     elseif step.action == 'drill' then
@@ -185,7 +205,17 @@ local function runHeistThread(heistId, heist)
 
                         TaskPlayAnim(ped, 'anim@heists@ornate_bank@grab_cash', 'grab', 8.0, -8.0, -1, 1, 0.0, false, false, false)
 
-                        success = lib.skillCheck(step.difficulty or { 'easy', 'medium' })
+                        -- Mini game removed - auto success
+                        local lootDuration = step.time or 3000
+                        lib.progressCircle({
+                            duration = lootDuration,
+                            label = step.label or 'Looting...',
+                            position = 'bottom',
+                            useWhileDead = false,
+                            canCancel = false,
+                            disable = { move = true, car = true, combat = true },
+                        })
+                        success = true
                         ClearPedTasks(ped)
 
                     elseif step.action == 'escape' then
@@ -362,6 +392,86 @@ CreateThread(function()
             lib.hideTextUI()
         end
 
+        Wait(0)
+    end
+end)
+
+------------------------------------------------------
+-- CLERK AI HANDLER (STORE TYPES)
+------------------------------------------------------
+
+local function spawnClerkForHeist(heistId, clerkData)
+    if SpawnedClerks[heistId] then
+        return SpawnedClerks[heistId]  -- already spawned
+    end
+
+    local model = joaat(clerkData.npcModel)
+    RequestModel(model)
+    while not HasModelLoaded(model) do Wait(0) end
+
+    local ped = CreatePed(4, model, clerkData.coords.x, clerkData.coords.y, clerkData.coords.z - 1.0, clerkData.coords.heading, false, false)
+    SetEntityInvincible(ped, true)
+    SetBlockingOfNonTemporaryEvents(ped, true)
+    SetPedFleeAttributes(ped, 0, 0)
+    FreezeEntityPosition(ped, true)
+
+    SpawnedClerks[heistId] = ped
+    return ped
+end
+
+------------------------------------------------------
+-- CLERK BEHAVIOUR LOOP
+------------------------------------------------------
+
+CreateThread(function()
+    Wait(2000)
+
+    while true do
+        local ped = PlayerPedId()
+        local pCoords = GetEntityCoords(ped)
+        local hasGun = IsPedArmed(ped, 4)
+        local aiming = IsPlayerFreeAiming(PlayerId())
+
+        for id, heist in pairs(Heists) do
+            if heist.heistType == 'store' and heist.clerk and heist.clerk.enabled then
+
+                local clerkPed = SpawnedClerks[id]
+                if not clerkPed then
+                    clerkPed = spawnClerkForHeist(id, heist.clerk)
+                end
+
+                local clerkCoords = GetEntityCoords(clerkPed)
+                local dist = #(pCoords - clerkCoords)
+
+                -- too far to interact
+                if dist > 10.0 then goto continue end
+
+                -- aiming gun at clerk → SURRENDER
+                if dist < 5.0 and hasGun and aiming then
+                    if heist.clerk.surrenderAnim then
+                        RequestAnimDict('missfbi5ig_22')
+                        while not HasAnimDictLoaded('missfbi5ig_22') do Wait(0) end
+                        TaskPlayAnim(clerkPed, 'missfbi5ig_22', 'hands_up_anxious_scared', 8.0, -8.0, -1, 1, 0, false, false, false)
+                    end
+
+                    -- PANIC CHANCE (silent alarm)
+                    if math.random(1, 100) <= (heist.clerk.panicChance or 50) then
+                        TriggerServerEvent('cs_heistmaster:clerkPanic', id)
+                    end
+
+                    -- show UI
+                    lib.showTextUI("[E] Tell clerk to open the register")
+                    if IsControlJustPressed(0, 38) then
+                        lib.hideTextUI()
+                        -- start heist normally
+                        TriggerServerEvent('cs_heistmaster:requestStart', id)
+                        Wait(1500)
+                    end
+                end
+
+            end
+            ::continue::
+        end
         Wait(0)
     end
 end)

@@ -19,6 +19,15 @@ Config.Heists = {
 
         start = { x = -46.40, y = -1758.21, z = 29.42 },  -- where you start the robbery
 
+        clerk = {
+            enabled = true,
+            npcModel = 'mp_m_shopkeep_01', -- default clerk model
+            coords = { x = -47.24, y = -1759.01, z = 29.42, heading = 45.0 },
+            panicChance = 60,   -- % chance clerk secretly hits silent alarm
+            surrenderAnim = true,
+            safeKeyChance = 30  -- optional future update: clerk gives safe key
+        },
+
         steps = {
             {
                 action = "smash",

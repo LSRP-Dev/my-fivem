@@ -64,23 +64,143 @@ AddEventHandler('entityDamaged', function(victim, damageData)
     end
 end)
 
--- Track register shots using entity damaged event
-AddEventHandler('gameEventTriggered', function(name, args)
-    if name == 'CEventNetworkEntityDamage' then
-        local victim = args[1]
-        if not victim or not DoesEntityExist(victim) then return end
-        if GetEntityType(victim) ~= 3 then return end  -- Only objects
+-- Track register shots using weapon fire
+CreateThread(function()
+    while true do
+        Wait(0)
+        local playerPed = PlayerPedId()
         
-        local netId = NetworkGetNetworkIdFromEntity(victim)
-        if CashRegisters[netId] and not CashRegisters[netId].opened then
-            local health = GetEntityHealth(victim)
-            if health < 100 then
-                -- Mark as opened and notify server
-                CashRegisters[netId].opened = true
-                TriggerServerEvent('cs_heistbuilder:server:registerHit', netId)
+        if IsPedShooting(playerPed) then
+            local weaponImpact = GetPedLastWeaponImpactCoord(playerPed)
+            if weaponImpact and weaponImpact.x ~= 0.0 then
+                -- Check all tracked registers
+                for netId, registerData in pairs(CashRegisters) do
+                    if not registerData.opened then
+                        local obj = registerData.obj
+                        if obj and DoesEntityExist(obj) then
+                            local objCoords = GetEntityCoords(obj)
+                            local distance = #(weaponImpact - objCoords)
+                            
+                            -- If shot within 2 meters of register
+                            if distance < 2.0 then
+                                local health = GetEntityHealth(obj)
+                                if health < 100 then
+                                    -- Mark as opened and notify server
+                                    registerData.opened = true
+                                    TriggerServerEvent('cs_heistbuilder:server:registerHit', netId)
+                                    print(('[cs_heistbuilder] Register %s shot and opened!'):format(netId))
+                                    
+                                    -- Add loot interaction
+                                    addLootInteraction(netId, registerData)
+                                end
+                            end
+                        end
+                    end
+                end
             end
         end
     end
+end)
+
+-- Add loot interaction to opened register
+function addLootInteraction(netId, registerData)
+    if not registerData.obj or not DoesEntityExist(registerData.obj) then return end
+    
+    -- Use ox_target or lib interaction
+    if exports.ox_target then
+        exports.ox_target:addLocalEntity(registerData.obj, {
+            {
+                name = 'loot_register_' .. netId,
+                icon = 'fa-solid fa-dollar-sign',
+                label = 'Loot Cash Register',
+                canInteract = function()
+                    return registerData.opened and not registerData.looted
+                end,
+                onSelect = function()
+                    TriggerServerEvent('cs_heistbuilder:server:lootRegister', netId)
+                end,
+                distance = 2.0
+            }
+        })
+    elseif exports['qb-target'] then
+        exports['qb-target']:AddTargetEntity(registerData.obj, {
+            options = {
+                {
+                    type = 'client',
+                    icon = 'fa-solid fa-dollar-sign',
+                    label = 'Loot Cash Register',
+                    canInteract = function()
+                        return registerData.opened and not registerData.looted
+                    end,
+                    action = function()
+                        TriggerServerEvent('cs_heistbuilder:server:lootRegister', netId)
+                    end
+                }
+            },
+            distance = 2.0
+        })
+    else
+        -- Fallback: Use lib interaction
+        CreateThread(function()
+            while registerData.opened and not registerData.looted do
+                Wait(0)
+                local playerPed = PlayerPedId()
+                local playerCoords = GetEntityCoords(playerPed)
+                local objCoords = GetEntityCoords(registerData.obj)
+                local distance = #(playerCoords - objCoords)
+                
+                if distance < 2.0 then
+                    lib.showTextUI('[E] Loot Cash Register')
+                    if IsControlJustPressed(0, 38) then -- E key
+                        TriggerServerEvent('cs_heistbuilder:server:lootRegister', netId)
+                        lib.hideTextUI()
+                    end
+                else
+                    lib.hideTextUI()
+                end
+            end
+            lib.hideTextUI()
+        end)
+    end
+end
+
+RegisterNetEvent('cs_heistbuilder:client:registerOpened', function(netId, coords, amount)
+    local registerData = CashRegisters[netId]
+    if registerData then
+        registerData.opened = true
+        registerData.cashAmount = amount
+        addLootInteraction(netId, registerData)
+        
+        lib.notify({
+            title = 'Register Opened',
+            description = 'Press E to loot the cash register',
+            type = 'success'
+        })
+    end
+end)
+
+RegisterNetEvent('cs_heistbuilder:client:lootCollected', function(amount)
+    local registerData = nil
+    for netId, data in pairs(CashRegisters) do
+        if data.opened and not data.looted then
+            registerData = data
+            registerData.looted = true
+            -- Remove loot interaction
+            if exports.ox_target and exports.ox_target.removeLocalEntity then
+                exports.ox_target:removeLocalEntity(data.obj, 'loot_register_' .. netId)
+            end
+            if exports['qb-target'] and exports['qb-target'].RemoveTargetEntity then
+                exports['qb-target']:RemoveTargetEntity(data.obj, 'loot_register_' .. netId)
+            end
+            break
+        end
+    end
+    
+    lib.notify({
+        title = 'Cash Collected',
+        description = ('You collected $%s'):format(amount),
+        type = 'success'
+    })
 end)
 
 -- Configure guard (server creates, client configures with client-side natives)
@@ -255,15 +375,29 @@ end)
 -- Find existing cash registers in the city (don't spawn new ones)
 RegisterNetEvent('cs_heistbuilder:client:findRegisters', function(robberyId, registerConfigs)
     CreateThread(function()
+        Wait(3000)  -- Wait for world to fully load
+        
         for _, registerConfig in ipairs(registerConfigs) do
             local coords = registerConfig.coords or {}
             if coords.x and coords.y and coords.z then
-                -- Wait a bit for world to load
-                Wait(2000)
+                -- Try multiple cash register models
+                local models = {`prop_till_01`, `v_ret_gc_cashreg`, `prop_till_02`, `prop_till_03`}
+                local obj = nil
                 
-                -- Find existing cash register object near coordinates
-                local model = registerConfig.model or `prop_till_01`
-                local obj = GetClosestObjectOfType(coords.x, coords.y, coords.z, 2.0, model, false, false, false)
+                for _, model in ipairs(models) do
+                    -- Increase search radius to 5.0 meters
+                    obj = GetClosestObjectOfType(coords.x, coords.y, coords.z, 5.0, model, false, false, false)
+                    if obj and DoesEntityExist(obj) then
+                        -- Check if this object is close enough to our target coords
+                        local objCoords = GetEntityCoords(obj)
+                        local distance = #(vector3(coords.x, coords.y, coords.z) - objCoords)
+                        if distance < 3.0 then
+                            break
+                        else
+                            obj = nil
+                        end
+                    end
+                end
                 
                 if obj and DoesEntityExist(obj) then
                     local netId = NetworkGetNetworkIdFromEntity(obj)
@@ -287,12 +421,47 @@ RegisterNetEvent('cs_heistbuilder:client:findRegisters', function(robberyId, reg
                         coords = coords,
                         obj = obj,
                         opened = false,
+                        looted = false,
                         registerData = registerConfig
                     }
                     
-                    print(('[cs_heistbuilder] Found existing register at %s, %s, %s'):format(coords.x, coords.y, coords.z))
+                    print(('[cs_heistbuilder] Found existing register at %s, %s, %s (netId: %s)'):format(coords.x, coords.y, coords.z, netId))
                 else
-                    print(('[cs_heistbuilder] WARNING: Could not find existing register at %s, %s, %s'):format(coords.x, coords.y, coords.z))
+                    print(('[cs_heistbuilder] WARNING: Could not find existing register at %s, %s, %s - Trying to scan area...'):format(coords.x, coords.y, coords.z))
+                    
+                    -- Fallback: Scan for any objects nearby
+                    local playerPed = PlayerPedId()
+                    local playerCoords = GetEntityCoords(playerPed)
+                    local targetCoords = vector3(coords.x, coords.y, coords.z)
+                    
+                    if #(playerCoords - targetCoords) < 100.0 then
+                        -- Player is nearby, wait and try again
+                        Wait(2000)
+                        for _, model in ipairs(models) do
+                            obj = GetClosestObjectOfType(coords.x, coords.y, coords.z, 5.0, model, false, false, false)
+                            if obj and DoesEntityExist(obj) then
+                                local objCoords = GetEntityCoords(obj)
+                                local distance = #(targetCoords - objCoords)
+                                if distance < 3.0 then
+                                    local netId = NetworkGetNetworkIdFromEntity(obj)
+                                    SetEntityProofs(obj, false, false, false, false, false, false, false, false)
+                                    SetEntityHealth(obj, 100)
+                                    SetEntityMaxHealth(obj, 100)
+                                    
+                                    CashRegisters[netId] = {
+                                        robberyId = robberyId,
+                                        coords = coords,
+                                        obj = obj,
+                                        opened = false,
+                                        looted = false,
+                                        registerData = registerConfig
+                                    }
+                                    print(('[cs_heistbuilder] Found register on retry at %s, %s, %s'):format(coords.x, coords.y, coords.z))
+                                    break
+                                end
+                            end
+                        end
+                    end
                 end
             end
         end

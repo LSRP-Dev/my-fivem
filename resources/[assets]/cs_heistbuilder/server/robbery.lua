@@ -322,36 +322,49 @@ function Robbery.checkRegisterHit(netId, attacker)
         return
     end
     
-    local obj = NetworkGetEntityFromNetworkId(netId)
-    if not DoesEntityExist(obj) then return end
+    -- Mark register as opened (don't give money yet - wait for loot interaction)
+    registerData.opened = true
     
-    -- Check if register was shot - health below 100 means it's been damaged
-    local health = GetEntityHealth(obj)
-    if health < 100 then
-        registerData.opened = true
-        
-        -- Prevent further damage
-        SetEntityHealth(obj, 100)
-        FreezeEntityPosition(obj, true)
-        
-        -- Spawn money
-        local coords = registerData.registerData.coords or {}
-        local amount = math.random(registerData.registerData.minCash or 500, registerData.registerData.maxCash or 1500)
-        
-        TriggerClientEvent('cs_heistbuilder:client:registerOpened', -1, netId, coords, amount)
-        
-        -- Give money to attacker
-        if attacker then
-            if exports['qbx_core'] and exports['qbx_core'].Functions and exports['qbx_core'].Functions.AddMoney then
-                exports['qbx_core'].Functions.AddMoney(attacker, 'cash', amount, 'store_robbery')
-            else
-                exports['ox_inventory']:AddItem(attacker, 'cash', amount)
-            end
-            
-            TriggerClientEvent('cs_heistbuilder:client:lootCollected', attacker, amount)
-        end
-    end
+    local coords = registerData.registerData.coords or {}
+    local amount = math.random(registerData.registerData.minCash or 500, registerData.registerData.maxCash or 1500)
+    
+    -- Store amount for when player loots it
+    registerData.cashAmount = amount
+    
+    TriggerClientEvent('cs_heistbuilder:client:registerOpened', -1, netId, coords, amount)
+    print(('[cs_heistbuilder] Register %s opened by player %s, amount: $%s'):format(netId, attacker or 'unknown', amount))
 end
+
+-- Handle loot interaction
+RegisterNetEvent('cs_heistbuilder:server:lootRegister', function(netId)
+    local src = source
+    local registerData = CashRegisters[netId]
+    if not registerData or not registerData.opened or registerData.looted then
+        TriggerClientEvent('cs_heistbuilder:client:robberyUpdate', src, registerData and registerData.robberyId or '', 'Register already looted!')
+        return
+    end
+    
+    local robberyId = registerData.robberyId
+    local state = ActiveRobberies[robberyId]
+    if not state or not state.activated then
+        TriggerClientEvent('cs_heistbuilder:client:robberyUpdate', src, robberyId, 'Robbery not activated yet!')
+        return
+    end
+    
+    -- Mark as looted
+    registerData.looted = true
+    local amount = registerData.cashAmount or math.random(registerData.registerData.minCash or 500, registerData.registerData.maxCash or 1500)
+    
+    -- Give money to player
+    if exports['qbx_core'] and exports['qbx_core'].Functions and exports['qbx_core'].Functions.AddMoney then
+        exports['qbx_core'].Functions.AddMoney(src, 'cash', amount, 'store_robbery')
+    elseif exports['ox_inventory'] and exports['ox_inventory'].AddItem then
+        exports['ox_inventory']:AddItem(src, 'money', amount)
+    end
+    
+    TriggerClientEvent('cs_heistbuilder:client:lootCollected', src, amount)
+    print(('[cs_heistbuilder] Player %s looted register %s: $%s'):format(src, netId, amount))
+end)
 
 function Robbery.cleanupRobbery(robberyId)
     -- Don't delete guards/tellers permanently - they respawn after cooldown

@@ -24,9 +24,37 @@ local function GetStep(heistId)
     return HeistStepState[heistId] or 1
 end
 
+-- PATCH C: Helper to notify all crew members
+local function notifyCrew(heistId, notification)
+    if HeistCrew[heistId] and HeistCrew[heistId].members then
+        for memberSrc in pairs(HeistCrew[heistId].members) do
+            -- Only notify active/online members
+            if GetPlayerPed(memberSrc) and GetPlayerPed(memberSrc) ~= 0 then
+                TriggerClientEvent('ox_lib:notify', memberSrc, notification)
+            end
+        end
+    end
+end
+
 local function AdvanceStep(heistId)
     HeistStepState[heistId] = GetStep(heistId) + 1
-    TriggerClientEvent("cs_heistmaster:client:setStep", -1, heistId, HeistStepState[heistId])
+    
+    -- PATCH C: Sync step to all crew members instead of all players
+    if HeistCrew[heistId] and HeistCrew[heistId].members then
+        for memberSrc in pairs(HeistCrew[heistId].members) do
+            TriggerClientEvent("cs_heistmaster:client:setStep", memberSrc, heistId, HeistStepState[heistId])
+        end
+        
+        -- PATCH C: Notify all crew members of new step
+        notifyCrew(heistId, {
+            title = 'Heist',
+            description = 'New step active. Check your objectives.',
+            type = 'info'
+        })
+    else
+        -- Fallback: broadcast to all if crew tracking missing
+        TriggerClientEvent("cs_heistmaster:client:setStep", -1, heistId, HeistStepState[heistId])
+    end
 end
 
 local function debugPrint(...)
@@ -110,6 +138,9 @@ end
 local HeistActivePlayers = {} -- [heistId] = { [playerId] = true }
 local HeistStartAttempts = {} -- [heistId] = { time = os.time(), players = {} }
 
+-- PATCH C: Heist crew tracking (leader + members)
+local HeistCrew = {} -- [heistId] = { leader = src, members = { [src] = true } }
+
 -- Helper to get player coords from server
 local function getPlayerCoords(src)
     local ped = GetPlayerPed(src)
@@ -132,6 +163,28 @@ local function isPlayerNearHeist(src, heist, maxDistance)
     local distance = #(playerCoords - heistCoords)
     
     return distance <= maxDistance
+end
+
+-- Helper to get players within radius of coordinates
+local function getPlayersInRadius(coords, radius)
+    local nearbyPlayers = {}
+    local players = GetActivePlayers()
+    
+    for _, playerId in ipairs(players) do
+        local playerSrc = GetPlayerServerId(playerId)
+        if playerSrc and playerSrc > 0 then
+            local ped = GetPlayerPed(playerId)
+            if ped and ped ~= 0 then
+                local playerCoords = GetEntityCoords(ped)
+                local distance = #(coords - playerCoords)
+                if distance <= radius then
+                    table.insert(nearbyPlayers, playerSrc)
+                end
+            end
+        end
+    end
+    
+    return nearbyPlayers
 end
 
 RegisterNetEvent('cs_heistmaster:requestStart', function(heistId)
@@ -165,6 +218,13 @@ RegisterNetEvent('cs_heistmaster:requestStart', function(heistId)
                 HeistActivePlayers[heistId] = {}
             end
             HeistActivePlayers[heistId][src] = true
+            
+            -- PATCH C: Add to crew if crew exists
+            if not HeistCrew[heistId] then
+                HeistCrew[heistId] = { leader = nil, members = {} }
+            end
+            HeistCrew[heistId].members[src] = true
+            
             debugPrint(('Player %s joined active heist %s'):format(src, heistId))
             
             -- Send heist data to joining player
@@ -304,11 +364,33 @@ RegisterNetEvent('cs_heistmaster:requestStart', function(heistId)
     -- Clear attempt tracking
     HeistStartAttempts[heistId] = nil
     
-    -- Add starter to active players
+    -- PATCH C: Create heist crew with leader
+    local startCoords = getPlayerCoords(src)
+    if not startCoords then
+        startCoords = vec3(heist.start.x, heist.start.y, heist.start.z)
+    end
+    
+    HeistCrew[heistId] = {
+        leader = src,
+        members = { [src] = true }
+    }
+    
+    -- PATCH C: Auto-add nearby players (within 15m) as crew members
+    local nearbyPlayers = getPlayersInRadius(startCoords, 15.0)
+    for _, playerSrc in ipairs(nearbyPlayers) do
+        if playerSrc ~= src and playerSrc > 0 then
+            HeistCrew[heistId].members[playerSrc] = true
+            debugPrint(('Auto-added player %s to heist crew %s (within 15m)'):format(playerSrc, heistId))
+        end
+    end
+    
+    -- Add all crew members to active players
     if not HeistActivePlayers[heistId] then
         HeistActivePlayers[heistId] = {}
     end
-    HeistActivePlayers[heistId][src] = true
+    for memberSrc in pairs(HeistCrew[heistId].members) do
+        HeistActivePlayers[heistId][memberSrc] = true
+    end
     
     -- set state and broadcast to client
     state.state = 'in_progress'
@@ -325,13 +407,31 @@ RegisterNetEvent('cs_heistmaster:requestStart', function(heistId)
     -- PATCH C: Initialize step state (only if not already initialized)
     if not HeistStepState[heistId] then
         HeistStepState[heistId] = 1
-        TriggerClientEvent("cs_heistmaster:client:setStep", -1, heistId, 1)
     end
 
-    debugPrint(('Heist %s started by %s'):format(heistId, src))
+    debugPrint(('Heist %s started by %s with %d crew members'):format(heistId, src, 
+        (function() local count = 0; for _ in pairs(HeistCrew[heistId].members) do count = count + 1 end; return count end)()))
 
-    -- send full heist data to starter
-    TriggerClientEvent('cs_heistmaster:client:startHeist', src, heistId, heist)
+    -- PATCH C: Send heist data to all crew members
+    for memberSrc in pairs(HeistCrew[heistId].members) do
+        TriggerClientEvent('cs_heistmaster:client:startHeist', memberSrc, heistId, heist)
+        TriggerClientEvent("cs_heistmaster:client:setStep", memberSrc, heistId, HeistStepState[heistId] or 1)
+        
+        -- Notify crew members
+        if memberSrc == src then
+            TriggerClientEvent('ox_lib:notify', memberSrc, {
+                title = heist.label,
+                description = 'Heist started. You are the leader.',
+                type = 'success'
+            })
+        else
+            TriggerClientEvent('ox_lib:notify', memberSrc, {
+                title = heist.label,
+                description = 'You joined the heist crew!',
+                type = 'info'
+            })
+        end
+    end
 
     -- send guards (if any) to everyone
     TriggerClientEvent('cs_heistmaster:client:spawnGuards', -1, heistId, heist.guards or {})
@@ -368,25 +468,65 @@ RegisterNetEvent('cs_heistmaster:finishHeist', function(heistId)
     -- Use centralized state management
     setHeistState(heistId, "cooldown")
 
+    -- PATCH C: Reward splitting - check if heist has sharedReward config
+    local sharedReward = heist.sharedReward ~= false -- Default to true (shared)
+    local crewMembers = {}
+    
+    if HeistCrew[heistId] and HeistCrew[heistId].members then
+        for memberSrc in pairs(HeistCrew[heistId].members) do
+            -- Only include active/online members
+            if GetPlayerPed(memberSrc) and GetPlayerPed(memberSrc) ~= 0 then
+                table.insert(crewMembers, memberSrc)
+            end
+        end
+    else
+        -- Fallback: just the finisher
+        crewMembers = { src }
+    end
+    
     -- Item rewards (cash rewards converted to black_money items)
     local itemList = heist.rewards and heist.rewards.items
     if itemList then
-        for _, item in ipairs(itemList) do
-            local chance = item.chance or 100
-            if math.random(0, 100) <= chance then
-                local qty = math.random(item.min or 1, item.max or 1)
-                giveItem(src, item.name, qty)
+        if sharedReward and #crewMembers > 1 then
+            -- Split rewards among crew members
+            for _, item in ipairs(itemList) do
+                local chance = item.chance or 100
+                if math.random(0, 100) <= chance then
+                    local totalQty = math.random(item.min or 1, item.max or 1)
+                    local qtyPerMember = math.max(1, math.floor(totalQty / #crewMembers))
+                    
+                    for _, memberSrc in ipairs(crewMembers) do
+                        giveItem(memberSrc, item.name, qtyPerMember)
+                        debugPrint(('Gave shared reward: %sx %s to crew member %s'):format(qtyPerMember, item.name, memberSrc))
+                    end
+                end
+            end
+        else
+            -- Leader only or single player
+            for _, item in ipairs(itemList) do
+                local chance = item.chance or 100
+                if math.random(0, 100) <= chance then
+                    local qty = math.random(item.min or 1, item.max or 1)
+                    giveItem(src, item.name, qty)
+                end
             end
         end
     end
 
-    TriggerClientEvent('ox_lib:notify', src, {
-        title = heist.label,
-        description = 'Heist completed successfully.',
-        type = 'success'
-    })
+    -- PATCH C: Notify all crew members
+    for _, memberSrc in ipairs(crewMembers) do
+        TriggerClientEvent('ox_lib:notify', memberSrc, {
+            title = heist.label,
+            description = 'Heist completed successfully.',
+            type = 'success'
+        })
+    end
 
-    -- Remove player from active players
+    -- PATCH C: Remove player from crew and active players
+    if HeistCrew[heistId] and HeistCrew[heistId].members then
+        HeistCrew[heistId].members[src] = nil
+    end
+    
     if HeistActivePlayers[heistId] then
         HeistActivePlayers[heistId][src] = nil
     end
@@ -396,6 +536,7 @@ RegisterNetEvent('cs_heistmaster:finishHeist', function(heistId)
         HeistLootServerState[heistId] = nil
         HeistStepState[heistId] = nil
         HeistActivePlayers[heistId] = nil -- Clear active players tracking
+        HeistCrew[heistId] = nil -- Clear crew tracking
         SafeOpened[heistId] = nil -- Clear safe opened tracking
         -- Reset to idle after cooldown
         setHeistState(heistId, "idle")
@@ -439,6 +580,7 @@ RegisterNetEvent('cs_heistmaster:abortHeist', function(heistId)
             HeistLootServerState[heistId] = nil
             HeistStepState[heistId] = nil
             HeistActivePlayers[heistId] = nil
+            HeistCrew[heistId] = nil -- Clear crew tracking
             SafeOpened[heistId] = nil -- Clear safe opened tracking
             
             debugPrint(('Heist %s aborted by %s (no players left)'):format(heistId, src))
@@ -572,14 +714,47 @@ RegisterNetEvent('cs_heistmaster:safeReward', function(heistId)
         safeReward.items = heist.safeReward.items
     end
 
+    -- PATCH C: Reward splitting for safe rewards
+    local sharedReward = heist.sharedReward ~= false -- Default to true (shared)
+    local crewMembers = {}
+    
+    if HeistCrew[heistId] and HeistCrew[heistId].members then
+        for memberSrc in pairs(HeistCrew[heistId].members) do
+            -- Only include active/online members
+            if GetPlayerPed(memberSrc) and GetPlayerPed(memberSrc) ~= 0 then
+                table.insert(crewMembers, memberSrc)
+            end
+        end
+    else
+        -- Fallback: just the opener
+        crewMembers = { src }
+    end
+
     -- Item rewards
     if safeReward.items then
-        for _, item in ipairs(safeReward.items) do
-            local chance = item.chance or 100
-            if math.random(0, 100) <= chance then
-                local qty = math.random(item.min or 1, item.max or 1)
-                giveItem(src, item.name, qty)
-                debugPrint(('Gave safe reward: %sx %s to player %s'):format(qty, item.name, src))
+        if sharedReward and #crewMembers > 1 then
+            -- Split rewards among crew members
+            for _, item in ipairs(safeReward.items) do
+                local chance = item.chance or 100
+                if math.random(0, 100) <= chance then
+                    local totalQty = math.random(item.min or 1, item.max or 1)
+                    local qtyPerMember = math.max(1, math.floor(totalQty / #crewMembers))
+                    
+                    for _, memberSrc in ipairs(crewMembers) do
+                        giveItem(memberSrc, item.name, qtyPerMember)
+                        debugPrint(('Gave shared safe reward: %sx %s to crew member %s'):format(qtyPerMember, item.name, memberSrc))
+                    end
+                end
+            end
+        else
+            -- Leader only or single player
+            for _, item in ipairs(safeReward.items) do
+                local chance = item.chance or 100
+                if math.random(0, 100) <= chance then
+                    local qty = math.random(item.min or 1, item.max or 1)
+                    giveItem(src, item.name, qty)
+                    debugPrint(('Gave safe reward: %sx %s to player %s'):format(qty, item.name, src))
+                end
             end
         end
     end
@@ -722,14 +897,47 @@ RegisterNetEvent('cs_heistmaster:server:giveLoot', function(heistId, lootKey)
                 lootReward.items = heist.rewards.items
             end
             
+            -- PATCH C: Reward splitting for loot rewards
+            local sharedReward = heist.sharedReward ~= false -- Default to true (shared)
+            local crewMembers = {}
+            
+            if HeistCrew[heistId] and HeistCrew[heistId].members then
+                for memberSrc in pairs(HeistCrew[heistId].members) do
+                    -- Only include active/online members
+                    if GetPlayerPed(memberSrc) and GetPlayerPed(memberSrc) ~= 0 then
+                        table.insert(crewMembers, memberSrc)
+                    end
+                end
+            else
+                -- Fallback: just the looter
+                crewMembers = { src }
+            end
+            
             -- Give item rewards
             if lootReward.items then
-                for _, item in ipairs(lootReward.items) do
-                    local chance = item.chance or 100
-                    if math.random(0, 100) <= chance then
-                        local qty = math.random(item.min or 1, item.max or 1)
-                        giveItem(src, item.name, qty)
-                        debugPrint(('Gave loot reward: %sx %s to player %s'):format(qty, item.name, src))
+                if sharedReward and #crewMembers > 1 then
+                    -- Split rewards among crew members
+                    for _, item in ipairs(lootReward.items) do
+                        local chance = item.chance or 100
+                        if math.random(0, 100) <= chance then
+                            local totalQty = math.random(item.min or 1, item.max or 1)
+                            local qtyPerMember = math.max(1, math.floor(totalQty / #crewMembers))
+                            
+                            for _, memberSrc in ipairs(crewMembers) do
+                                giveItem(memberSrc, item.name, qtyPerMember)
+                                debugPrint(('Gave shared loot reward: %sx %s to crew member %s'):format(qtyPerMember, item.name, memberSrc))
+                            end
+                        end
+                    end
+                else
+                    -- Leader only or single player
+                    for _, item in ipairs(lootReward.items) do
+                        local chance = item.chance or 100
+                        if math.random(0, 100) <= chance then
+                            local qty = math.random(item.min or 1, item.max or 1)
+                            giveItem(src, item.name, qty)
+                            debugPrint(('Gave loot reward: %sx %s to player %s'):format(qty, item.name, src))
+                        end
                     end
                 end
             end

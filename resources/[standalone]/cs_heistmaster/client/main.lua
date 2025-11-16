@@ -764,8 +764,8 @@ local function handleDrillAction(heistId, heist, step, stepIndex)
     end
     
     if hasKey then
-        -- PATCH A+++: Use key insertion/lockpicking animation (3 seconds)
-        local unlockDuration = 3000
+        -- PATCH A+++: Use key insertion/lockpicking animation (extended to 15 seconds for police response time)
+        local unlockDuration = 15000
         
         -- Request and play key insertion animation
         RequestAnimDict('veh@break_in@0h@p_m_one@')

@@ -3,9 +3,32 @@ local targetDetected = GetResourceState('ox_target') == 'started' or GetResource
 
 return {
     useTarget = useTargetConvar == 'true' or targetDetected,
-    successChance = 65,
+    successChance = 85, -- Base success chance (increased for faster turnover)
     robberyChance = 15,
     minimumDrugSalePolice = 2,
+    -- Drug tier configuration for realistic progression
+    -- Each drug has its own success rate and request weight
+    drugTiers = {
+        weed_smallbag = {
+            tier = 1,
+            successRate = 90, -- Easiest to sell (low-tier)
+            requestWeight = 10 -- Most common requests
+        },
+        coke_smallbag = {
+            tier = 2,
+            successRate = 75, -- Medium difficulty
+            requestWeight = 5 -- Moderate requests
+        },
+        meth_smallbag = {
+            tier = 3,
+            successRate = 60, -- Hardest to sell (high-tier)
+            requestWeight = 2 -- Rare requests
+        }
+    },
+    -- Cooldown settings
+    postSaleCooldownMin = 1000, -- Reduced from 4000
+    postSaleCooldownMax = 2000, -- Reduced from 7000
+    lastPedCleanupInterval = 10, -- Clear lastPed array every 10 interactions
     deliveryLocations = {
         {
             label = 'Innocence Boulevard Lot',

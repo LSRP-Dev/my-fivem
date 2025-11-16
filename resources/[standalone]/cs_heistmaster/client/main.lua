@@ -627,14 +627,14 @@ local function handleDrillAction(heistId, heist, step, stepIndex)
     end
     
     if hasKey then
-        -- Use unlocking animation with key
+        -- Use key insertion/lockpicking animation
         local unlockDuration = 3500
         
-        -- Request and play unlocking animation
-        RequestAnimDict('anim@heists@keypad@')
-        while not HasAnimDictLoaded('anim@heists@keypad@') do Wait(0) end
+        -- Request and play key insertion animation
+        RequestAnimDict('veh@break_in@0h@p_m_one@')
+        while not HasAnimDictLoaded('veh@break_in@0h@p_m_one@') do Wait(0) end
         
-        TaskPlayAnim(ped, 'anim@heists@keypad@', 'keypad_loop', 8.0, -8.0, unlockDuration, 1, 0.0, false, false, false)
+        TaskPlayAnim(ped, 'veh@break_in@0h@p_m_one@', 'low_force_entry_ds', 8.0, -8.0, unlockDuration, 1, 0.0, false, false, false)
         
         local progressResult = lib.progressCircle({
             duration = unlockDuration,
@@ -734,11 +734,11 @@ local function handleSmashAction(heistId, heist, step, stepIndex)
     -- Equip crowbar
     SetCurrentPedWeapon(ped, joaat('WEAPON_CROWBAR'), true)
     
-    -- Use crowbar prying/hammering animation
-    RequestAnimDict('amb@world_human_hammering@male@base')
-    while not HasAnimDictLoaded('amb@world_human_hammering@male@base') do Wait(0) end
+    -- Use crowbar forced entry animation (heavy swinging motion)
+    RequestAnimDict('melee@large_wpn@streamed_core')
+    while not HasAnimDictLoaded('melee@large_wpn@streamed_core') do Wait(0) end
     
-    TaskPlayAnim(ped, 'amb@world_human_hammering@male@base', 'base', 8.0, -8.0, step.time or 4000, 1, 0.0, false, false, false)
+    TaskPlayAnim(ped, 'melee@large_wpn@streamed_core', 'ground_attack_on_spot', 8.0, -8.0, step.time or 4000, 1, 0.0, false, false, false)
     
     local progressResult = lib.progressCircle({
         duration = step.time or 4000,

@@ -836,6 +836,28 @@ CreateThread(function()
     TriggerServerEvent("cs_heistmaster:server:syncVaultDoors")
 end)
 
+-- DEBUG: Manual command to force spawn vault door (for testing)
+RegisterCommand('spawnvaultdoor', function(source, args)
+    local heistId = args[1] or 'fleeca_legion'
+    local heist = Config.Heists[heistId]
+    
+    if not heist then
+        print('^1[DEBUG] Heist not found: ' .. heistId .. '^7')
+        return
+    end
+    
+    if not heist.vault or not heist.vault.coords then
+        print('^1[DEBUG] Heist has no vault config: ' .. heistId .. '^7')
+        return
+    end
+    
+    print('^2[DEBUG] Force spawning vault door for: ' .. heistId .. '^7')
+    
+    -- Force spawn using the spawnVaultDoor event
+    local doorModel = heist.vault.doorModel or 'v_ilev_gb_vauldr'
+    TriggerEvent('cs_heistmaster:client:spawnVaultDoor', heistId, heist.vault.coords, heist.vault.heading or 160.0, doorModel, false)
+end, false)
+
 -- ============================================================
 -- D) GUARDS SYSTEM
 -- ============================================================
@@ -1752,7 +1774,11 @@ local function SpawnAllHeistElements()
     
     SpawnAllInProgress = true
     
-    for heistId, heist in pairs(Heists) do
+    -- CRITICAL: Use Config.Heists if Heists table is empty (for initial spawn)
+    local heistSource = next(Heists) and Heists or Config.Heists
+    debugPrint(('SpawnAllHeistElements: Using %s heists'):format(next(Heists) and 'Heists table' or 'Config.Heists'))
+    
+    for heistId, heist in pairs(heistSource) do
         -- Spawn bank guards for bank heists (fleeca, etc.) - only if they don't exist
         if (heist.heistType == 'fleeca' or heist.heistType == 'bank') and heist.guards then
             -- CRITICAL FIX: Stronger check to prevent duplicate spawning
@@ -1807,24 +1833,40 @@ local function SpawnAllHeistElements()
                 local model = heist.vault.doorModel or 'v_ilev_gb_vauldr'
                 local hash = joaat(model)
                 
+                debugPrint(('Attempting to spawn vault door for heist: %s at coords: %s'):format(heistId, tostring(vaultCoords)))
+                
                 RequestModel(hash)
-                while not HasModelLoaded(hash) do Wait(0) end
+                local modelLoadAttempts = 0
+                while not HasModelLoaded(hash) and modelLoadAttempts < 100 do
+                    Wait(10)
+                    modelLoadAttempts = modelLoadAttempts + 1
+                end
                 
-                -- Spawn door
-                local obj = CreateObject(hash, vaultCoords.x, vaultCoords.y, vaultCoords.z, true, false, false)
-                SetEntityHeading(obj, vaultHeading)
-                FreezeEntityPosition(obj, true)
-                
-                -- CRITICAL: Enable collision when door is closed (will be disabled when opened)
-                SetEntityCollision(obj, true, true)
-                
-                -- Store reference
-                HeistState[heistId].vaultObj = obj
-                
-                -- Keep legacy VaultDoors for compatibility
-                VaultDoors[heistId] = { obj = obj, heading = vaultHeading, open = false }
-                
-                debugPrint(('Vault door auto-spawned: %s'):format(heistId))
+                if not HasModelLoaded(hash) then
+                    debugPrint(('ERROR: Failed to load vault door model %s for heist: %s'):format(model, heistId))
+                else
+                    -- Spawn door
+                    local obj = CreateObject(hash, vaultCoords.x, vaultCoords.y, vaultCoords.z, true, false, false)
+                    if obj and DoesEntityExist(obj) then
+                        SetEntityHeading(obj, vaultHeading)
+                        FreezeEntityPosition(obj, true)
+                        
+                        -- CRITICAL: Enable collision when door is closed (will be disabled when opened)
+                        SetEntityCollision(obj, true, true)
+                        
+                        -- Store reference
+                        HeistState[heistId].vaultObj = obj
+                        
+                        -- Keep legacy VaultDoors for compatibility
+                        VaultDoors[heistId] = { obj = obj, heading = vaultHeading, open = false }
+                        
+                        debugPrint(('Vault door auto-spawned successfully: %s (entity: %s)'):format(heistId, tostring(obj)))
+                    else
+                        debugPrint(('ERROR: Failed to create vault door object for heist: %s'):format(heistId))
+                    end
+                end
+            else
+                debugPrint(('Vault door already exists for heist: %s (entity: %s)'):format(heistId, tostring(HeistState[heistId].vaultObj)))
             end
         end
     end

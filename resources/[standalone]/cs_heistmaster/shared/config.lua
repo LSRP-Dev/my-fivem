@@ -49,9 +49,9 @@ Config.Heists = {
             {
                 action = "drill",
                 label = "Crack the Safe",
-                coords = { x = -43.4578, y = -1748.3510, z = 29.4210 }, -- behind counter -43.4578, -1748.3510, 29.4210, 58.7212
+                coords = { x = -43.4578, y = -1748.3510, z = 29.4210 }, -- in offcie -43.4578, -1748.3510, 29.4210, 58.7212
                 radius = 1.5,
-                time = 30000, -- Extended to 30 seconds for more realistic timing
+                time = 60000, -- Extended to 60 seconds to allow police response time
                 alert = "loud",
                 alarmSound = true
             },
@@ -59,8 +59,7 @@ Config.Heists = {
 
         rewards = {
             items = {
-                { name = 'black_money', chance = 100, min = 2500, max = 5500 },
-                { name = 'stolen_goods', chance = 30, min = 1, max = 2 },
+                { name = 'black_money', chance = 100, min = 2500, max = 5000 },
             }
         }
     },

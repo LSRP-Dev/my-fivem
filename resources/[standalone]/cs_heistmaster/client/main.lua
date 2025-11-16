@@ -806,11 +806,9 @@ local function handleDrillAction(heistId, heist, step, stepIndex)
         TriggerServerEvent("cs_heistmaster:server:completeStep", heistId, stepIndex)
         return true
     else
-        -- PATCH A+++: Run full drill animation (30 seconds for store safes)
-        local duration = step.time or 30000
-        if heist.heistType == 'store' then
-            duration = 30000 -- Force 30 seconds for store safes
-        end
+        -- PATCH A+++: Run full drill animation (use config time, default 60 seconds for store safes)
+        local duration = step.time or 60000
+        -- Use the time from config (now 60 seconds to allow police response)
         RequestAnimDict('anim@heists@fleeca_bank@drilling')
         while not HasAnimDictLoaded('anim@heists@fleeca_bank@drilling') do Wait(0) end
         

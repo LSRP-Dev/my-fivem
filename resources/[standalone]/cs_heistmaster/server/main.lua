@@ -107,8 +107,29 @@ RegisterNetEvent('cs_heistmaster:requestStart', function(heistId)
 
     -- item check
     if heist.requiredItem and exports['ox_inventory'] then
-        local searchResult = exports['ox_inventory']:Search(src, 'count', heist.requiredItem)
+        local itemName = heist.requiredItem
+        local searchResult = exports['ox_inventory']:Search(src, 'count', itemName)
         local count = (type(searchResult) == 'number') and searchResult or 0
+        
+        -- If not found, try lowercase version (for non-weapon items)
+        if count <= 0 and type(itemName) == 'string' and itemName:sub(1, 7):lower() ~= 'weapon_' then
+            searchResult = exports['ox_inventory']:Search(src, 'count', itemName:lower())
+            count = (type(searchResult) == 'number') and searchResult or 0
+        end
+        
+        -- If still not found and it's a weapon_, try without weapon_ prefix
+        if count <= 0 and type(itemName) == 'string' and itemName:sub(1, 7):lower() == 'weapon_' then
+            local itemWithoutPrefix = itemName:sub(8):lower()
+            searchResult = exports['ox_inventory']:Search(src, 'count', itemWithoutPrefix)
+            count = (type(searchResult) == 'number') and searchResult or 0
+        end
+        
+        if Config.Debug then
+            debugPrint(('Item check for %s: searchResult=%s, count=%s'):format(
+                heist.requiredItem, tostring(searchResult), tostring(count)
+            ))
+        end
+        
         if count <= 0 then
             TriggerClientEvent('ox_lib:notify', src, {
                 description = ('You need a %s to start this heist.'):format(heist.requiredItem),

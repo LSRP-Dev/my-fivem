@@ -145,6 +145,20 @@ RegisterNetEvent('cs_heistmaster:requestStart', function(heistId)
             end
         end
         
+        -- Check if weapon is currently equipped (for weapons only)
+        if count <= 0 and type(itemName) == 'string' and itemName:sub(1, 7):lower() == 'weapon_' then
+            if exports['ox_inventory'].GetCurrentWeapon then
+                local currentWeapon = exports['ox_inventory']:GetCurrentWeapon(src)
+                if currentWeapon and currentWeapon.name then
+                    local weaponName = currentWeapon.name:lower()
+                    local checkName = itemName:lower()
+                    if weaponName == checkName or weaponName == checkName:sub(8) then
+                        count = 1 -- Weapon is equipped
+                    end
+                end
+            end
+        end
+        
         if Config.Debug then
             debugPrint(('Item check for %s: found count=%s (tried variations: %s)'):format(
                 heist.requiredItem, tostring(count), table.concat(itemVariations, ', ')
@@ -153,7 +167,7 @@ RegisterNetEvent('cs_heistmaster:requestStart', function(heistId)
         
         if count <= 0 then
             TriggerClientEvent('ox_lib:notify', src, {
-                description = ('You need a %s to start this heist.'):format(heist.requiredItem),
+                description = ('You need a %s to start this heist. Make sure it is in your inventory.'):format(heist.requiredItem),
                 type = 'error'
             })
             return

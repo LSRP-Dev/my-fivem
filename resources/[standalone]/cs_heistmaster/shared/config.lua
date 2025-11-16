@@ -61,7 +61,7 @@ Config.Heists = {
 
         requiredPolice = 0,
         cooldown = 45 * 60,
-        requiredItem = 'heist_laptop',
+        requiredItem = 'business_laptop',
 
         start = { x = 148.9, y = -1040.1, z = 29.37 },
 

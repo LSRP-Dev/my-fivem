@@ -6,12 +6,14 @@ local ActiveGuards = {}
 local ActiveTellers = {}
 local CashRegisters = {}
 
+-- Server creates networked entities, clients configure them
 local function spawnGuard(robberyId, guardData)
     local coords = guardData.coords or {}
     local model = guardData.model or 's_m_m_security_01'
     local weapon = guardData.weapon or 'WEAPON_CARBINERIFLE'
     
     CreateThread(function()
+        -- Server can create networked peds
         local ped = CreatePed(4, GetHashKey(model), coords.x, coords.y, coords.z, coords.w or 0.0, true, true)
         if not DoesEntityExist(ped) then return end
         
@@ -22,9 +24,8 @@ local function spawnGuard(robberyId, guardData)
             guardData = guardData
         }
         
-        SetNetworkIdCanMigrate(netId, false)
-        -- Send to client to configure (client-side natives)
-        TriggerClientEvent('cs_heistbuilder:client:configureGuard', -1, netId, {
+        -- Send to clients to configure (clients handle SetNetworkIdCanMigrate)
+        TriggerClientEvent('cs_heistbuilder:client:configureGuard', -1, netId, robberyId, {
             weapon = weapon,
             fleeAttributes = 0,
             combatAttributes = 46,
@@ -32,7 +33,6 @@ local function spawnGuard(robberyId, guardData)
             accuracy = 70,
             invincible = false
         })
-        TriggerClientEvent('cs_heistbuilder:client:guardSpawned', -1, netId, robberyId, coords)
     end)
 end
 
@@ -41,6 +41,7 @@ local function spawnTeller(robberyId, tellerData)
     local model = tellerData.model or 's_f_y_shop_low'
     
     CreateThread(function()
+        -- Server can create networked peds
         local ped = CreatePed(4, GetHashKey(model), coords.x, coords.y, coords.z, coords.w or 0.0, true, true)
         if not DoesEntityExist(ped) then return end
         
@@ -51,10 +52,8 @@ local function spawnTeller(robberyId, tellerData)
             tellerData = tellerData
         }
         
-        SetNetworkIdCanMigrate(netId, false)
-        -- Send to client to configure (client-side natives)
-        TriggerClientEvent('cs_heistbuilder:client:configureTeller', -1, netId)
-        TriggerClientEvent('cs_heistbuilder:client:tellerSpawned', -1, netId, robberyId, coords)
+        -- Send to clients to configure (clients handle SetNetworkIdCanMigrate)
+        TriggerClientEvent('cs_heistbuilder:client:configureTeller', -1, netId, robberyId)
     end)
 end
 
@@ -63,11 +62,12 @@ local function spawnCashRegister(robberyId, registerData)
     local model = registerData.model or `prop_till_01`
     
     CreateThread(function()
+        -- Server can create networked objects
         local obj = CreateObject(model, coords.x, coords.y, coords.z, false, true, true)
         if not DoesEntityExist(obj) then return end
         
+        -- Server can do basic object setup
         FreezeEntityPosition(obj, true)
-        -- Make register vulnerable to damage
         SetEntityProofs(obj, false, false, false, false, false, false, false, false)
         SetEntityHealth(obj, 100)
         SetEntityMaxHealth(obj, 100)
@@ -80,8 +80,8 @@ local function spawnCashRegister(robberyId, registerData)
             opened = false
         }
         
-        SetNetworkIdCanMigrate(netId, false)
-        TriggerClientEvent('cs_heistbuilder:client:registerSpawned', -1, netId, robberyId, coords)
+        -- Send to clients to configure network settings
+        TriggerClientEvent('cs_heistbuilder:client:configureRegister', -1, netId, robberyId, coords)
     end)
 end
 

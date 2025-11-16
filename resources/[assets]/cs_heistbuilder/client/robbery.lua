@@ -41,14 +41,21 @@ AddEventHandler('entityDamaged', function(victim, damageData)
     end
 end)
 
--- Configure guard on client side (server can't use ped natives)
-RegisterNetEvent('cs_heistbuilder:client:configureGuard', function(netId, config)
+-- Configure guard (server creates, client configures with client-side natives)
+RegisterNetEvent('cs_heistbuilder:client:configureGuard', function(netId, robberyId, config)
     CreateThread(function()
         local ped = NetworkGetEntityFromNetworkId(netId)
-        if not ped or not DoesEntityExist(ped) then return end
+        if not ped or not DoesEntityExist(ped) then 
+            -- Wait a bit for entity to sync
+            Wait(500)
+            ped = NetworkGetEntityFromNetworkId(netId)
+            if not ped or not DoesEntityExist(ped) then return end
+        end
         
-        Wait(100) -- Wait for ped to fully spawn
+        -- Network/migration settings (client-side only)
+        SetNetworkIdCanMigrate(netId, false)
         
+        -- Configure ped behavior (client-side natives)
         SetEntityAsMissionEntity(ped, true, true)
         SetPedFleeAttributes(ped, config.fleeAttributes or 0, false)
         SetPedCombatAttributes(ped, config.combatAttributes or 46, true)
@@ -60,22 +67,67 @@ RegisterNetEvent('cs_heistbuilder:client:configureGuard', function(netId, config
         SetEntityInvincible(ped, config.invincible == false and false or true)
         SetBlockingOfNonTemporaryEvents(ped, true)
         TaskGuardCurrentPosition(ped, 15.0, 15.0, 1)
+        
+        -- Track on client
+        GuardPeds[netId] = {
+            robberyId = robberyId,
+            coords = GetEntityCoords(ped),
+            ped = ped
+        }
     end)
 end)
 
--- Configure teller on client side
-RegisterNetEvent('cs_heistbuilder:client:configureTeller', function(netId)
+-- Configure teller (server creates, client configures)
+RegisterNetEvent('cs_heistbuilder:client:configureTeller', function(netId, robberyId)
     CreateThread(function()
         local ped = NetworkGetEntityFromNetworkId(netId)
-        if not ped or not DoesEntityExist(ped) then return end
+        if not ped or not DoesEntityExist(ped) then 
+            -- Wait a bit for entity to sync
+            Wait(500)
+            ped = NetworkGetEntityFromNetworkId(netId)
+            if not ped or not DoesEntityExist(ped) then return end
+        end
         
-        Wait(100) -- Wait for ped to fully spawn
+        -- Network/migration settings (client-side only)
+        SetNetworkIdCanMigrate(netId, false)
         
+        -- Configure ped behavior (client-side natives)
         SetEntityAsMissionEntity(ped, true, true)
         SetPedFleeAttributes(ped, 512, true)
         SetPedCombatAttributes(ped, 0, false)
         SetBlockingOfNonTemporaryEvents(ped, true)
         TaskStandStill(ped, -1)
+        
+        -- Track on client
+        TellerPeds[netId] = {
+            robberyId = robberyId,
+            coords = GetEntityCoords(ped),
+            ped = ped
+        }
+    end)
+end)
+
+-- Configure cash register (server creates, client configures network settings)
+RegisterNetEvent('cs_heistbuilder:client:configureRegister', function(netId, robberyId, coords)
+    CreateThread(function()
+        local obj = NetworkGetEntityFromNetworkId(netId)
+        if not obj or not DoesEntityExist(obj) then 
+            -- Wait a bit for entity to sync
+            Wait(500)
+            obj = NetworkGetEntityFromNetworkId(netId)
+            if not obj or not DoesEntityExist(obj) then return end
+        end
+        
+        -- Network/migration settings (client-side only)
+        SetNetworkIdCanMigrate(netId, false)
+        
+        -- Track on client
+        CashRegisters[netId] = {
+            robberyId = robberyId,
+            coords = coords,
+            obj = obj,
+            opened = false
+        }
     end)
 end)
 
@@ -92,27 +144,6 @@ RegisterNetEvent('cs_heistbuilder:client:robberyReady', function(robberyId, heis
     })
 end)
 
-RegisterNetEvent('cs_heistbuilder:client:guardSpawned', function(netId, robberyId, coords)
-    GuardPeds[netId] = {
-        robberyId = robberyId,
-        coords = coords
-    }
-end)
-
-RegisterNetEvent('cs_heistbuilder:client:tellerSpawned', function(netId, robberyId, coords)
-    TellerPeds[netId] = {
-        robberyId = robberyId,
-        coords = coords
-    }
-end)
-
-RegisterNetEvent('cs_heistbuilder:client:registerSpawned', function(netId, robberyId, coords)
-    CashRegisters[netId] = {
-        robberyId = robberyId,
-        coords = coords,
-        opened = false
-    }
-end)
 
 RegisterNetEvent('cs_heistbuilder:client:robberyUpdate', function(robberyId, message)
     lib.notify({

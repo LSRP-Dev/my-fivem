@@ -78,6 +78,23 @@ RegisterNetEvent('cs_heistmaster:client:cleanupHeist', function(heistId)
 end)
 
 ------------------------------------------------------
+-- Alert and alarm handler
+------------------------------------------------------
+
+local function handleStepAlert(heistId, heist, step)
+    local alertType = step.alert or 'none'
+    if alertType ~= 'none' then
+        TriggerServerEvent('cs_heistmaster:alertPolice', heistId, alertType)
+    end
+
+    if step.alarmSound then
+        -- simple world alarm: you can replace with your own sound system
+        -- This just plays a local siren for now
+        PlaySoundFrontend(-1, 'Bed', 'WastedSounds', true)
+    end
+end
+
+------------------------------------------------------
 -- Step runner
 ------------------------------------------------------
 
@@ -115,6 +132,9 @@ local function runHeistThread(heistId, heist)
                     --------------------------------------------------
                     -- ACTION BEHAVIOUR
                     --------------------------------------------------
+                    -- NEW: trigger alert/alarm once we start the step
+                    handleStepAlert(heistId, heist, step)
+
                     if step.action == 'hack' then
                         success = lib.skillCheck(step.difficulty or { 'medium', 'medium', 'hard' })
 

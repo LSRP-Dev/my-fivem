@@ -25,6 +25,8 @@ Config.Heists = {
                 coords = { x = -46.66, y = -1757.92, z = 29.42 },
                 radius = 1.5,
                 time = 4000, -- ms
+                alert = "loud",         -- NEW: instantly alerts police, plays alarm
+                alarmSound = true       -- NEW: trigger alarm SFX on this step
             },
             {
                 action = "loot",
@@ -32,12 +34,14 @@ Config.Heists = {
                 coords = { x = -46.66, y = -1757.92, z = 29.42 },
                 radius = 1.5,
                 difficulty = { 'easy', 'easy', 'medium' },
+                alert = "silent"        -- maybe they don't get alerted if you're quick
             },
             {
                 action = "escape",
                 label = "Escape the Area",
                 coords = { x = -46.40, y = -1758.21, z = 29.42 },
                 radius = 80.0,
+                alert = "none"
             },
         },
 
@@ -85,6 +89,7 @@ Config.Heists = {
                 coords = { x = 146.9, y = -1046.1, z = 29.37 },
                 radius = 1.5,
                 difficulty = { 'easy', 'medium', 'hard' },
+                alert = "silent"      -- chance-based silent
             },
             {
                 action = "drill",
@@ -92,18 +97,22 @@ Config.Heists = {
                 coords = { x = 148.0, y = -1044.7, z = 29.37 },
                 radius = 1.5,
                 time = 30000, -- ms
+                alert = "loud",       -- definitely alerts cops
+                alarmSound = true
             },
             {
                 action = "loot",
                 label = "Loot the Vault",
                 coords = { x = 151.4, y = -1040.7, z = 29.37 },
                 radius = 3.0,
+                alert = "silent"
             },
             {
                 action = "escape",
                 label = "Escape the Area",
                 coords = { x = 148.9, y = -1040.1, z = 29.37 },
                 radius = 120.0,
+                alert = "none"
             },
         },
 

@@ -2,6 +2,7 @@ local Config = Config
 local Heists = Config.Heists
 
 local ActiveHeists = {}  -- [id] = { state, lastStart }
+local HeistAlerts = {} -- [heistId] = true if cops already alerted
 
 local function debugPrint(...)
     if Config.Debug then
@@ -200,6 +201,7 @@ RegisterNetEvent('cs_heistmaster:finishHeist', function(heistId)
     if state.state ~= 'in_progress' then return end
 
     state.state = 'cooldown'
+    HeistAlerts[heistId] = nil -- reset alert state
 
     -- Cash rewards
     local cashCfg = heist.rewards and heist.rewards.cash
@@ -244,8 +246,51 @@ RegisterNetEvent('cs_heistmaster:abortHeist', function(heistId)
     if state.state ~= 'in_progress' then return end
 
     state.state = 'idle'
+    HeistAlerts[heistId] = nil -- reset alert state
     debugPrint(('Heist %s aborted by %s'):format(heistId, src))
     TriggerClientEvent('cs_heistmaster:client:cleanupHeist', -1, heistId)
+end)
+
+----------------------------------------------------------------
+-- Alert police handler
+----------------------------------------------------------------
+
+RegisterNetEvent('cs_heistmaster:alertPolice', function(heistId, alertType)
+    local src = source
+    local heist = Heists[heistId]
+    if not heist then return end
+
+    -- don't double-alert for the same heist
+    if HeistAlerts[heistId] then return end
+
+    -- optional: treat "silent" as chance-based
+    if alertType == 'silent' then
+        local chance = 50 -- 50% chance silent fails and cops get warned
+        if math.random(1, 100) > chance then
+            return -- silent remained silent, no alert
+        end
+    end
+
+    HeistAlerts[heistId] = true
+
+    -- TODO: Replace with your dispatch system
+    -- Example: you might integrate ps-dispatch, core-dispatch, customise to NDRP, etc.
+    local msg = ('Suspicious activity reported near %s'):format(heist.label)
+    debugPrint('Police alert (' .. heistId .. '): ' .. msg)
+
+    -- If you have your own dispatch system, trigger it here:
+    -- TriggerEvent('your_dispatch:server:sendAlert', { type = 'heist', message = msg, coords = heist.start })
+
+    -- Also notify all players with police job as a very basic fallback:
+    local cops = getOnlinePoliceCount()
+    if cops > 0 then
+        -- naive broadcast example
+        TriggerClientEvent('ox_lib:notify', -1, {
+            title = 'Heist Alert',
+            description = msg,
+            type = 'error'
+        })
+    end
 end)
 
 ----------------------------------------------------------------

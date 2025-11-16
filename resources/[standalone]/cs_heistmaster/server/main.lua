@@ -204,16 +204,7 @@ RegisterNetEvent('cs_heistmaster:finishHeist', function(heistId)
     state.state = 'cooldown'
     HeistAlerts[heistId] = nil -- reset alert state
 
-    -- Cash rewards
-    local cashCfg = heist.rewards and heist.rewards.cash
-    if cashCfg then
-        local amount = math.random(cashCfg.min or 0, cashCfg.max or 0)
-        if amount > 0 then
-            giveMoney(src, amount)
-        end
-    end
-
-    -- Item rewards
+    -- Item rewards (cash rewards converted to black_money items)
     local itemList = heist.rewards and heist.rewards.items
     if itemList then
         for _, item in ipairs(itemList) do
@@ -337,21 +328,13 @@ RegisterNetEvent('cs_heistmaster:safeReward', function(heistId)
     if not heist then return end
 
     -- Give safe-specific rewards (you can customize this)
-    -- For now, just give extra cash/items
+    -- All rewards are items now (black_money instead of cash)
     local safeReward = {
-        cash = { min = 1000, max = 3000 },
         items = {
+            { name = 'black_money', chance = 100, min = 1000, max = 3000 },
             { name = 'stolen_goods', chance = 50, min = 1, max = 3 },
         }
     }
-
-    -- Cash rewards
-    if safeReward.cash then
-        local amount = math.random(safeReward.cash.min or 0, safeReward.cash.max or 0)
-        if amount > 0 then
-            giveMoney(src, amount)
-        end
-    end
 
     -- Item rewards
     if safeReward.items then

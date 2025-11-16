@@ -49,8 +49,8 @@ Config.Heists = {
         },
 
         rewards = {
-            cash = { min = 2500, max = 5500 },
             items = {
+                { name = 'black_money', chance = 100, min = 2500, max = 5500 },
                 { name = 'stolen_goods', chance = 30, min = 1, max = 2 },
             }
         }
@@ -114,8 +114,8 @@ Config.Heists = {
         },
 
         rewards = {
-            cash = { min = 55000, max = 90000 },
             items = {
+                { name = 'black_money', chance = 100, min = 55000, max = 90000 },
                 { name = 'markedbills', chance = 70, min = 6, max = 12 },
                 { name = 'gold_bar',    chance = 40, min = 1, max = 3 },
             }
@@ -152,8 +152,8 @@ Config.Heists = {
         },
 
         rewards = {
-            cash = { min = 15000, max = 35000 },
             items = {
+                { name = 'black_money', chance = 100, min = 15000, max = 35000 },
                 { name = 'diamond',    chance = 60, min = 1, max = 3 },
                 { name = 'gold_chain', chance = 70, min = 2, max = 5 },
             }

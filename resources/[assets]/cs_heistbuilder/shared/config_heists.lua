@@ -46,6 +46,7 @@ Config.Heists = {
     {
         id = 'fleeca_boulevard',
         label = 'Fleeca: Boulevar Del Perro',
+        type = 'bank',
         tier = 2,
         minPlayers = 2,
         maxPlayers = 4,
@@ -77,6 +78,59 @@ Config.Heists = {
             dna = true,
             cctv = true,
             fibres = true
+        }
+    },
+    {
+        id = 'store_robbery_24_7',
+        label = '24/7 Store Robbery',
+        type = 'store',
+        tier = 1,
+        minPlayers = 1,
+        maxPlayers = 4,
+        requiredPolice = 0,
+        cooldownMinutes = 15,
+        entryPoint = { x = 24.47, y = -1346.62, z = 29.50 },
+        escapeRadius = 50.0,
+        reputationRequired = 0,
+        guards = {
+            { weapon = 'WEAPON_PISTOL', coords = { x = 28.20, y = -1339.25, z = 29.50, w = 180.0 }, model = 's_m_m_security_01' }
+        },
+        tellers = {
+            { coords = { x = 25.80, y = -1346.62, z = 29.50, w = 270.0 }, model = 's_f_y_shop_low' },
+            { coords = { x = 23.20, y = -1346.62, z = 29.50, w = 90.0 }, model = 's_f_y_shop_low' }
+        },
+        cashRegisters = {
+            { coords = { x = 24.47, y = -1344.62, z = 29.50 }, model = `prop_till_01`, minCash = 500, maxCash = 1500 },
+            { coords = { x = 24.47, y = -1348.62, z = 29.50 }, model = `prop_till_01`, minCash = 500, maxCash = 1500 }
+        },
+        rewards = {
+            cash = { min = 1000, max = 3000 }
+        }
+    },
+    {
+        id = 'store_robbery_liquor',
+        label = 'Liquor Store Robbery',
+        type = 'store',
+        tier = 1,
+        minPlayers = 1,
+        maxPlayers = 4,
+        requiredPolice = 0,
+        cooldownMinutes = 20,
+        entryPoint = { x = 1134.27, y = -982.51, z = 46.42 },
+        escapeRadius = 50.0,
+        reputationRequired = 0,
+        guards = {
+            { weapon = 'WEAPON_PISTOL', coords = { x = 1128.50, y = -980.20, z = 46.42, w = 270.0 }, model = 's_m_m_security_01' }
+        },
+        tellers = {
+            { coords = { x = 1135.20, y = -982.51, z = 46.42, w = 180.0 }, model = 's_m_y_shop_mask' }
+        },
+        cashRegisters = {
+            { coords = { x = 1134.27, y = -981.50, z = 46.42 }, model = `prop_till_01`, minCash = 800, maxCash = 2000 },
+            { coords = { x = 1134.27, y = -983.50, z = 46.42 }, model = `prop_till_01`, minCash = 800, maxCash = 2000 }
+        },
+        rewards = {
+            cash = { min = 1600, max = 4000 }
         }
     }
 }

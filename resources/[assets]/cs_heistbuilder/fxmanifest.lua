@@ -20,6 +20,7 @@ client_scripts {
     'client/ui.lua',
     'client/police.lua',
     'client/editor.lua',
+    'client/robbery.lua',
     'client/main.lua'
 }
 
@@ -29,6 +30,7 @@ server_scripts {
     'server/reputation.lua',
     'server/police.lua',
     'server/editor.lua',
+    'server/robbery.lua',
     'server/main.lua'
 }
 

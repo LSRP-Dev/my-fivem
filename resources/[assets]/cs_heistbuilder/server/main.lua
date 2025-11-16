@@ -3,6 +3,7 @@ local Storage = CS_HEIST_SERVER and CS_HEIST_SERVER.Storage or {}
 local Reputation = CS_HEIST_REPUTATION or {}
 local Police = CS_HEIST_POLICE or {}
 local StepTypes = CS_HEIST_STEP_TYPES or {}
+local Robbery = CS_HEIST_ROBBERY or {}
 
 local ActiveHeists = {}
 local Cooldowns = {}
@@ -12,6 +13,17 @@ local function loadHeists()
 end
 
 Storage.loadAll()
+
+-- Spawn robberies on startup
+CreateThread(function()
+    Wait(5000)
+    local heists = Storage.getHeists()
+    for _, heist in pairs(heists) do
+        if heist.type and (heist.type == 'bank' or heist.type == 'store') then
+            Robbery.spawnRobbery(heist)
+        end
+    end
+end)
 
 local function setCooldown(heist)
     if not heist then return end

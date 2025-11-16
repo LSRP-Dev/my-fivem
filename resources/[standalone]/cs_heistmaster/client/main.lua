@@ -391,36 +391,6 @@ RegisterNetEvent("cs_heistmaster:client:setStep", function(heistId, step)
     debugPrint(('Step set: %s = %s'):format(heistId, step))
 end)
 
--- Forward declarations - will be defined later
-local runHeistThread
-local spawnStepObjects
-
-RegisterNetEvent('cs_heistmaster:client:startHeist', function(heistId, heistData)
-    currentHeistId = heistId
-    currentStepIndex = 1
-    Heists[heistId] = heistData
-    HeistClientState[heistId] = "active"
-    ActiveStep[heistId] = 1
-    alreadyLooted[heistId] = {}
-    
-    debugPrint('Heist started:', heistId)
-    
-    lib.notify({
-        title = heistData.label,
-        description = 'Heist started. Follow the objectives.',
-        type = 'success'
-    })
-    
-    -- Spawn step objects with target options
-    CreateThread(function()
-        Wait(500) -- Small delay to ensure targeting system is ready
-        spawnStepObjects(heistId, heistData)
-    end)
-    
-    -- Start the heist thread
-    runHeistThread(heistId, heistData)
-end)
-
 RegisterNetEvent('cs_heistmaster:client:forceStart', function(heistId)
     TriggerServerEvent('cs_heistmaster:requestStart', heistId)
 end)
@@ -870,7 +840,7 @@ RegisterNetEvent('cs_heistmaster:client:doStepAction', function(data)
 end)
 
 -- ============================================================
--- STEP OBJECT SPAWNING & TARGET SETUP
+-- STEP OBJECT SPAWNING & TARGET SETUP (Defined before event handler)
 -- ============================================================
 
 local function spawnStepObjects(heistId, heist)
@@ -1021,7 +991,7 @@ local function cleanupStepObjects(heistId)
             if useOxTarget then
                 -- ox_target zones are removed by ID
                 local zoneId = objOrZoneId
-                if type(zoneId) == 'string' then
+                if zoneId then
                     exports.ox_target:removeZone(zoneId)
                 end
             elseif useQbTarget then
@@ -1093,6 +1063,36 @@ local function runHeistThread(heistId, heist)
         end
     end)
 end
+
+-- ============================================================
+-- START HEIST EVENT HANDLER (After function definitions)
+-- ============================================================
+
+RegisterNetEvent('cs_heistmaster:client:startHeist', function(heistId, heistData)
+    currentHeistId = heistId
+    currentStepIndex = 1
+    Heists[heistId] = heistData
+    HeistClientState[heistId] = "active"
+    ActiveStep[heistId] = 1
+    alreadyLooted[heistId] = {}
+    
+    debugPrint('Heist started:', heistId)
+    
+    lib.notify({
+        title = heistData.label,
+        description = 'Heist started. Follow the objectives.',
+        type = 'success'
+    })
+    
+    -- Spawn step objects with target options
+    CreateThread(function()
+        Wait(500) -- Small delay to ensure targeting system is ready
+        spawnStepObjects(heistId, heistData)
+    end)
+    
+    -- Start the heist thread
+    runHeistThread(heistId, heistData)
+end)
 
 -- ============================================================
 -- SPAWN GUARDS AND CLERKS ON RESOURCE START / REJOIN

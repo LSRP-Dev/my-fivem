@@ -691,14 +691,26 @@ RegisterNetEvent('cs_heistmaster:safeReward', function(heistId)
     if SafeOpened[heistId] then
         debugPrint(('Safe already opened for heist %s by another player'):format(heistId))
         TriggerClientEvent('ox_lib:notify', src, {
+            title = 'Safe Already Opened',
             description = 'This safe has already been opened.',
-            type = 'error'
+            type = 'info'
         })
         return
     end
 
     -- Mark safe as opened
     SafeOpened[heistId] = true
+    
+    -- PATCH A+++: Notify all crew members that safe was opened
+    if HeistCrew[heistId] and HeistCrew[heistId].members then
+        for memberSrc in pairs(HeistCrew[heistId].members) do
+            TriggerClientEvent('ox_lib:notify', memberSrc, {
+                title = 'Safe Opened',
+                description = 'The safe has been opened!',
+                type = 'success'
+            })
+        end
+    end
 
     -- Give safe-specific rewards (different from loot rewards)
     -- Use heist-specific safe rewards if configured, otherwise use default
@@ -851,12 +863,23 @@ RegisterNetEvent("cs_heistmaster:server:completeStep", function(heistId, step)
         return 
     end
     
+    local heist = Heists[heistId]
+    local stepData = heist and heist.steps and heist.steps[step]
+    local stepLabel = stepData and stepData.label or ('Step ' .. step)
+    
     -- Sync loot completion to all crew members
     local lootKey = ('step_%s_%s'):format(step, heistId)
     if HeistCrew[heistId] and HeistCrew[heistId].members then
         for memberSrc in pairs(HeistCrew[heistId].members) do
             -- Notify all crew members that this step is completed
             TriggerClientEvent('cs_heistmaster:client:syncLootCompletion', memberSrc, heistId, lootKey)
+            
+            -- PATCH A+++: Notify crew members of step completion
+            TriggerClientEvent('ox_lib:notify', memberSrc, {
+                title = 'Heist Progress',
+                description = ('%s completed'):format(stepLabel),
+                type = 'info'
+            })
         end
     end
     

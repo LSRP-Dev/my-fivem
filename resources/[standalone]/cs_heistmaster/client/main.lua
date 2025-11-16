@@ -260,6 +260,9 @@ function SpawnClerk(heistId)
     debugPrint(('Store clerk spawned for heist: %s'):format(heistId))
 end
 
+-- Track intimidation progress to prevent interruption
+local ClerkIntimidationActive = {} -- [heistId] = true
+
 -- Detect aiming a gun at clerk (improved distance-based detection)
 CreateThread(function()
     while true do
@@ -278,7 +281,7 @@ CreateThread(function()
             if not DoesEntityExist(clerkPed) then goto continue_clerk_check end
 
             -- Prevent double-triggering
-            if StoreHeistStarted[heistId] then goto continue_clerk_check end
+            if StoreHeistStarted[heistId] or ClerkIntimidationActive[heistId] then goto continue_clerk_check end
 
             local state = HeistClientState[heistId] or "idle"
             if state ~= "idle" then goto continue_clerk_check end -- Already started
@@ -292,16 +295,41 @@ CreateThread(function()
             local aiming, target = GetEntityPlayerIsFreeAimingAt(PlayerId())
             if not aiming or not IsEntityAPed(target) or target ~= clerkPed then goto continue_clerk_check end
 
-            -- Mark as started to prevent duplicate triggers
-            StoreHeistStarted[heistId] = true
+            -- Mark intimidation as active to prevent duplicate triggers
+            ClerkIntimidationActive[heistId] = true
 
+            -- PATCH A+++: 4-second intimidation delay with progress circle
+            local intimidationDuration = 4000
+            
             -- Clear tasks BEFORE detection to prevent scenario interruption
             ClearPedTasksImmediately(clerkPed)
             Wait(100) -- Small delay for task clearing
+            
+            -- Show progress circle for intimidation
+            local progressResult = lib.progressCircle({
+                duration = intimidationDuration,
+                label = "Intimidating clerk...",
+                position = 'bottom',
+                disable = { move = true, car = true, combat = true },
+                canCancel = true
+            })
+            
+            -- If player cancels, reset intimidation state
+            if not progressResult then
+                ClerkIntimidationActive[heistId] = nil
+                goto continue_clerk_check
+            end
+            
+            -- Mark as started to prevent duplicate triggers
+            StoreHeistStarted[heistId] = true
 
-            -- Clerk panics and gives up
-            TaskHandsUp(clerkPed, 7000, player, -1, true)
-
+            -- Clerk surrenders with proper animation (missminuteman_1ig_2, handsup_base)
+            RequestAnimDict('missminuteman_1ig_2')
+            while not HasAnimDictLoaded('missminuteman_1ig_2') do Wait(10) end
+            
+            -- Play surrender animation
+            TaskPlayAnim(clerkPed, 'missminuteman_1ig_2', 'handsup_base', 8.0, -8.0, -1, 49, 0.0, false, false, false)
+            
             -- Start heist
             debugPrint(('Store heist auto-started by aiming at clerk: %s'):format(heistId))
             TriggerServerEvent("cs_heistmaster:requestStart", heistId)
@@ -319,7 +347,7 @@ CreateThread(function()
                 end
             end
 
-            -- A.1: Alert Police (panic) - respect panicChance and prevent repeat triggering
+            -- PATCH A+++: Delayed clerk panic alarm (5-second delay)
             if not ClerkRuntimeState[heistId] then
                 ClerkRuntimeState[heistId] = { panicked = false }
             end
@@ -329,10 +357,16 @@ CreateThread(function()
                 local panicChance = (heist and heist.clerk and heist.clerk.panicChance) or 50
                 if math.random(1, 100) <= panicChance then
                     rt.panicked = true
-                    TriggerServerEvent("cs_heistmaster:clerkPanic", heistId)
+                    -- Delay panic alarm by 5 seconds to simulate delayed panic
+                    CreateThread(function()
+                        Wait(5000) -- 5-second delay
+                        TriggerServerEvent("cs_heistmaster:clerkPanic", heistId)
+                    end)
                 end
             end
 
+            -- Clear intimidation state
+            ClerkIntimidationActive[heistId] = nil
             Wait(5000) -- Prevent spam
             ::continue_clerk_check::
         end
@@ -592,11 +626,12 @@ local function handleHackAction(heistId, heist, step, stepIndex)
     local ped = PlayerPedId()
     local lootKey = ('step_%s_%s'):format(stepIndex, heistId)
     
-    -- Check if already completed
+    -- PATCH A+++: Check if already completed with better notification
     if alreadyLooted[heistId] and alreadyLooted[heistId][lootKey] then
         lib.notify({
-            description = 'This has already been completed.',
-            type = 'error'
+            title = 'Already Completed',
+            description = 'This step has already been completed.',
+            type = 'info'
         })
         return false
     end
@@ -655,11 +690,12 @@ local function handleDrillAction(heistId, heist, step, stepIndex)
     local ped = PlayerPedId()
     local lootKey = ('step_%s_%s'):format(stepIndex, heistId)
     
-    -- Check if already completed (client-side check)
+    -- PATCH A+++: Check if already completed with better notification
     if alreadyLooted[heistId] and alreadyLooted[heistId][lootKey] then
         lib.notify({
-            description = 'This has already been completed.',
-            type = 'error'
+            title = 'Already Completed',
+            description = 'This step has already been completed.',
+            type = 'info'
         })
         return false
     end
@@ -671,8 +707,9 @@ local function handleDrillAction(heistId, heist, step, stepIndex)
         local safeCheck = lib.callback.await('cs_heistmaster:checkSafeOpened', false, heistId)
         if safeCheck then
             lib.notify({
+                title = 'Safe Already Opened',
                 description = 'This safe has already been opened by another player.',
-                type = 'error'
+                type = 'info'
             })
             return false
         end
@@ -697,8 +734,8 @@ local function handleDrillAction(heistId, heist, step, stepIndex)
     end
     
     if hasKey then
-        -- Use key insertion/lockpicking animation
-        local unlockDuration = 3500
+        -- PATCH A+++: Use key insertion/lockpicking animation (3 seconds)
+        local unlockDuration = 3000
         
         -- Request and play key insertion animation
         RequestAnimDict('veh@break_in@0h@p_m_one@')
@@ -739,8 +776,11 @@ local function handleDrillAction(heistId, heist, step, stepIndex)
         TriggerServerEvent("cs_heistmaster:server:completeStep", heistId, stepIndex)
         return true
     else
-        -- Run full drill animation
-        local duration = step.time or 20000
+        -- PATCH A+++: Run full drill animation (30 seconds for store safes)
+        local duration = step.time or 30000
+        if heist.heistType == 'store' then
+            duration = 30000 -- Force 30 seconds for store safes
+        end
         RequestAnimDict('anim@heists@fleeca_bank@drilling')
         while not HasAnimDictLoaded('anim@heists@fleeca_bank@drilling') do Wait(0) end
         
@@ -788,11 +828,12 @@ local function handleSmashAction(heistId, heist, step, stepIndex)
     local ped = PlayerPedId()
     local lootKey = ('step_%s_%s'):format(stepIndex, heistId)
     
-    -- Check if already completed
+    -- PATCH A+++: Check if already completed with better notification
     if alreadyLooted[heistId] and alreadyLooted[heistId][lootKey] then
         lib.notify({
-            description = 'This has already been completed.',
-            type = 'error'
+            title = 'Already Completed',
+            description = 'This step has already been completed.',
+            type = 'info'
         })
         return false
     end

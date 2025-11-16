@@ -98,7 +98,7 @@ function SpawnBankGuards(heistId)
     local heist = Config.Heists[heistId]
     if not heist or not heist.guards or #heist.guards == 0 then return end
 
-    -- Prevent concurrent spawns for the same heist
+    -- CRITICAL FIX: Prevent concurrent spawns for the same heist with stronger lock
     if GuardSpawning[heistId] then
         debugPrint(('Bank guard spawn already in progress for heist %s, skipping'):format(heistId))
         return
@@ -107,6 +107,32 @@ function SpawnBankGuards(heistId)
     -- Initialize guard table if needed
     if not BankGuards[heistId] then
         BankGuards[heistId] = {}
+    end
+
+    -- CRITICAL FIX: Check if ANY guard exists for this heist first (prevent mass spawning)
+    local anyGuardExists = false
+    for guardIndex, ped in pairs(BankGuards[heistId]) do
+        if ped and DoesEntityExist(ped) then
+            anyGuardExists = true
+            break
+        end
+    end
+    
+    -- If any guard exists, verify all locations are filled before spawning more
+    if anyGuardExists then
+        local allGuardsValid = true
+        for guardIndex = 1, #heist.guards do
+            local existingGuard = BankGuards[heistId][guardIndex]
+            if not existingGuard or not DoesEntityExist(existingGuard) then
+                allGuardsValid = false
+                break
+            end
+        end
+        
+        if allGuardsValid then
+            debugPrint(('All bank guards already exist for heist %s, skipping spawn'):format(heistId))
+            return
+        end
     end
 
     -- Check each guard spawn location individually - only spawn if guard doesn't exist at that location
@@ -571,17 +597,37 @@ RegisterNetEvent("cs_heistmaster:client:spawnVaultDoor", function(heistId, coord
 end)
 
 RegisterNetEvent("cs_heistmaster:client:openVaultDoor", function(heistId)
+    debugPrint(('Attempting to open vault door for heist: %s'):format(heistId))
+    
     -- FIX: Use HeistState for vault door reference
     local vaultObj = HeistState[heistId] and HeistState[heistId].vaultObj
     if not vaultObj or not DoesEntityExist(vaultObj) then
         -- Fallback to legacy VaultDoors
         local door = VaultDoors[heistId]
-        if not door or not DoesEntityExist(door.obj) then return end
-        vaultObj = door.obj
+        if door and DoesEntityExist(door.obj) then
+            vaultObj = door.obj
+        else
+            debugPrint(('ERROR: Vault door object not found for heist: %s'):format(heistId))
+            -- Try to spawn it if it doesn't exist
+            local heist = Heists[heistId]
+            if heist and heist.vault and heist.vault.coords then
+                TriggerServerEvent("cs_heistmaster:server:syncVaultDoors")
+                Wait(500) -- Wait for sync
+                vaultObj = HeistState[heistId] and HeistState[heistId].vaultObj
+                if not vaultObj or not DoesEntityExist(vaultObj) then
+                    debugPrint(('ERROR: Failed to spawn vault door for heist: %s'):format(heistId))
+                    return
+                end
+            else
+                return
+            end
+        end
     end
     
     local door = VaultDoors[heistId]
     local startHeading = door and door.heading or 160.0
+    
+    debugPrint(('Opening vault door: startHeading=%s, currentHeading=%s'):format(startHeading, GetEntityHeading(vaultObj)))
     
     -- FIX: Unfreeze door for animation
     FreezeEntityPosition(vaultObj, false)
@@ -592,30 +638,35 @@ RegisterNetEvent("cs_heistmaster:client:openVaultDoor", function(heistId)
     local rotationSteps = 50
     local headingStep = (targetHeading - currentHeading) / rotationSteps
     
-    -- Smooth rotation animation
-    for i = 1, rotationSteps do
-        local newHeading = currentHeading + (headingStep * i)
-        SetEntityHeading(vaultObj, newHeading)
-        Wait(20) -- 20ms per step = 1 second total animation
-    end
-    
-    -- Ensure final heading is set correctly
-    SetEntityHeading(vaultObj, targetHeading)
-    FreezeEntityPosition(vaultObj, true)
-    
-    -- Update door state
-    if door then
-        door.open = true
-    end
-    
-    -- Effects
-    local coords = GetEntityCoords(vaultObj)
-    UseParticleFxAssetNextCall("core")
-    StartParticleFxNonLoopedAtCoord("ent_dst_electrical", coords.x, coords.y, coords.z, 0.0, 0.0, 0.0, 1.0, false, false, false)
-    PlaySoundFromCoord(-1, "VAULT_DOOR_OPEN", coords.x, coords.y, coords.z, "dlc_heist_fleeca_bank_door_sounds", false, 1.0, false)
-    ShakeGameplayCam("SMALL_EXPLOSION_SHAKE", 0.5)
-    
-    debugPrint(('Vault door opened: %s'):format(heistId))
+    -- Smooth rotation animation in a thread to avoid blocking
+    CreateThread(function()
+        for i = 1, rotationSteps do
+            if not DoesEntityExist(vaultObj) then break end
+            local newHeading = currentHeading + (headingStep * i)
+            SetEntityHeading(vaultObj, newHeading)
+            Wait(20) -- 20ms per step = 1 second total animation
+        end
+        
+        -- Ensure final heading is set correctly
+        if DoesEntityExist(vaultObj) then
+            SetEntityHeading(vaultObj, targetHeading)
+            FreezeEntityPosition(vaultObj, true)
+        end
+        
+        -- Update door state
+        if door then
+            door.open = true
+        end
+        
+        -- Effects
+        local coords = GetEntityCoords(vaultObj)
+        UseParticleFxAssetNextCall("core")
+        StartParticleFxNonLoopedAtCoord("ent_dst_electrical", coords.x, coords.y, coords.z, 0.0, 0.0, 0.0, 1.0, false, false, false)
+        PlaySoundFromCoord(-1, "VAULT_DOOR_OPEN", coords.x, coords.y, coords.z, "dlc_heist_fleeca_bank_door_sounds", false, 1.0, false)
+        ShakeGameplayCam("SMALL_EXPLOSION_SHAKE", 0.5)
+        
+        debugPrint(('Vault door opened successfully: %s'):format(heistId))
+    end)
 end)
 
 RegisterNetEvent("cs_heistmaster:client:requestVaultSync", function()
@@ -898,9 +949,13 @@ local function handleDrillAction(heistId, heist, step, stepIndex)
             TriggerServerEvent('cs_heistmaster:safeReward', heistId)
         end
         
-        -- Open vault door for Fleeca
+        -- FIX: Open vault door for Fleeca - trigger immediately after drilling
         if heist.heistType == 'fleeca' and heist.vault then
+            debugPrint(('Drilling complete, opening vault door for heist: %s'):format(heistId))
             TriggerServerEvent('cs_heistmaster:server:setVaultOpen', heistId)
+            -- Also trigger client-side immediately as fallback
+            Wait(100) -- Small delay to ensure server event is processed
+            TriggerEvent('cs_heistmaster:client:openVaultDoor', heistId)
         end
         
         -- Mark as completed
@@ -1504,9 +1559,15 @@ local function SpawnAllHeistElements()
     for heistId, heist in pairs(Heists) do
         -- Spawn bank guards for bank heists (fleeca, etc.) - only if they don't exist
         if (heist.heistType == 'fleeca' or heist.heistType == 'bank') and heist.guards then
+            -- CRITICAL FIX: Stronger check to prevent duplicate spawning
+            if GuardSpawning[heistId] then
+                debugPrint(('Guard spawn in progress for heist %s, skipping SpawnAllHeistElements'):format(heistId))
+                goto continue_heist_loop
+            end
+            
             -- FIX: Check each guard location individually
             local needsSpawn = false
-            if not BankGuards[heistId] then
+            if not BankGuards[heistId] or not next(BankGuards[heistId]) then
                 needsSpawn = true
             else
                 -- Check if any guard location is missing
@@ -1522,6 +1583,7 @@ local function SpawnAllHeistElements()
                 SpawnBankGuards(heistId)
             end
         end
+        ::continue_heist_loop::
         
         -- Spawn clerks for store heists - only if they don't exist
         if heist.heistType == 'store' and heist.clerk and heist.clerk.enabled then

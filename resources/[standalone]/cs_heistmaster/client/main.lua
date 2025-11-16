@@ -597,9 +597,22 @@ RegisterNetEvent("cs_heistmaster:client:spawnVaultDoor", function(heistId, coord
     -- PATCH: Vault Door Entity Management
     if not HeistState[heistId] then HeistState[heistId] = {} end
     
-    -- Delete existing door if somehow already exists
+    -- CRITICAL: Check if door already exists before spawning (prevent duplicates)
     if HeistState[heistId].vaultObj and DoesEntityExist(HeistState[heistId].vaultObj) then
-        DeleteEntity(HeistState[heistId].vaultObj)
+        debugPrint(('spawnVaultDoor: Door already exists for heist %s (entity: %s), skipping spawn'):format(heistId, tostring(HeistState[heistId].vaultObj)))
+        return -- Door already exists, don't spawn again
+    end
+    
+    -- Also check legacy VaultDoors table
+    if VaultDoors[heistId] and VaultDoors[heistId].obj and DoesEntityExist(VaultDoors[heistId].obj) then
+        debugPrint(('spawnVaultDoor: Door exists in legacy table for heist %s, using existing'):format(heistId))
+        HeistState[heistId].vaultObj = VaultDoors[heistId].obj
+        return -- Use existing door
+    end
+    
+    -- Delete any invalid existing door references
+    if HeistState[heistId].vaultObj and not DoesEntityExist(HeistState[heistId].vaultObj) then
+        HeistState[heistId].vaultObj = nil
     end
     
     -- CRITICAL FIX: Hide/Remove original bank vault door from MLO/interior
@@ -1726,42 +1739,12 @@ RegisterNetEvent('cs_heistmaster:client:startHeist', function(heistId, heistData
     })
     
     -- CRITICAL FIX: Spawn vault door immediately when heist starts (for Fleeca banks)
+    -- NOTE: Door spawning is now handled by server event 'cs_heistmaster:client:spawnVaultDoor'
+    -- This prevents duplicate spawning. The server triggers this event when heist starts.
+    -- We don't need to spawn here anymore to avoid triple spawning.
     if heistData.heistType == 'fleeca' and heistData.vault and heistData.vault.coords then
-        -- Spawn door immediately (no delay) - it should be visible from the start
-        local doorModel = heistData.vault.doorModel or 'v_ilev_gb_vauldr'
-        local vaultCoords = vecFromTable(heistData.vault.coords)
-        local vaultHeading = heistData.vault.heading or 160.0
-        
-        CreateThread(function()
-            -- Wait a tiny bit for original door removal to start, then spawn our door
-            Wait(300)
-            
-            -- Ensure HeistState is initialized
-            if not HeistState[heistId] then HeistState[heistId] = {} end
-            
-            -- Check if door already exists
-            if HeistState[heistId].vaultObj and DoesEntityExist(HeistState[heistId].vaultObj) then
-                debugPrint(('Vault door already exists for heist: %s'):format(heistId))
-                return
-            end
-            
-            -- Load and spawn the door
-            local hash = joaat(doorModel)
-            RequestModel(hash)
-            while not HasModelLoaded(hash) do Wait(10) end
-            
-            -- Spawn door
-            local obj = CreateObject(hash, vaultCoords.x, vaultCoords.y, vaultCoords.z, true, false, false)
-            SetEntityHeading(obj, vaultHeading)
-            FreezeEntityPosition(obj, true)
-            SetEntityCollision(obj, true, true) -- Closed door blocks passage
-            
-            -- Store reference
-            HeistState[heistId].vaultObj = obj
-            VaultDoors[heistId] = { obj = obj, heading = vaultHeading, open = false }
-            
-            debugPrint(('Vault door spawned immediately on heist start: %s at coords: %s'):format(heistId, tostring(vaultCoords)))
-        end)
+        debugPrint(('startHeist: Fleeca heist started, vault door will be spawned by server event: %s'):format(heistId))
+        -- Server will trigger spawnVaultDoor event, no need to spawn here
     end
     
     -- Spawn step objects with target options
@@ -1861,6 +1844,20 @@ local function SpawnAllHeistElements()
             -- PATCH: Vault Door Entity Management
             if not HeistState[heistId] then HeistState[heistId] = {} end
             
+            -- CRITICAL: Check if door already exists (prevent duplicate spawning)
+            local existingDoor = HeistState[heistId].vaultObj
+            if existingDoor and DoesEntityExist(existingDoor) then
+                debugPrint(('SpawnAllHeistElements: Vault door already exists for heist %s (entity: %s), skipping spawn'):format(heistId, tostring(existingDoor)))
+                goto continue_vault_check
+            end
+            
+            -- Also check legacy table
+            if VaultDoors[heistId] and VaultDoors[heistId].obj and DoesEntityExist(VaultDoors[heistId].obj) then
+                debugPrint(('SpawnAllHeistElements: Vault door exists in legacy table for heist %s, using existing'):format(heistId))
+                HeistState[heistId].vaultObj = VaultDoors[heistId].obj
+                goto continue_vault_check
+            end
+            
             if not HeistState[heistId].vaultObj or not DoesEntityExist(HeistState[heistId].vaultObj) then
                 -- Delete existing door if somehow already exists
                 if HeistState[heistId].vaultObj and DoesEntityExist(HeistState[heistId].vaultObj) then
@@ -1900,14 +1897,13 @@ local function SpawnAllHeistElements()
                         -- Keep legacy VaultDoors for compatibility
                         VaultDoors[heistId] = { obj = obj, heading = vaultHeading, open = false }
                         
-                        debugPrint(('Vault door auto-spawned successfully: %s (entity: %s)'):format(heistId, tostring(obj)))
+                        debugPrint(('SpawnAllHeistElements: Vault door auto-spawned successfully: %s (entity: %s)'):format(heistId, tostring(obj)))
                     else
-                        debugPrint(('ERROR: Failed to create vault door object for heist: %s'):format(heistId))
+                        debugPrint(('SpawnAllHeistElements: ERROR: Failed to create vault door object for heist: %s'):format(heistId))
                     end
                 end
-            else
-                debugPrint(('Vault door already exists for heist: %s (entity: %s)'):format(heistId, tostring(HeistState[heistId].vaultObj)))
             end
+            ::continue_vault_check::
         end
     end
     

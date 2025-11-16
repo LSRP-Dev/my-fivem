@@ -8,6 +8,7 @@ local currentOfferDrug = nil
 local CurrentCops = 0
 local textDrawn = false
 local zoneMade = false
+local interactionCount = 0 -- Track interactions for lastPed cleanup
 
 local function tooFarAway()
     exports.qbx_core:Notify(locale('error.too_far_away'), 'error')
@@ -106,14 +107,27 @@ local function sellToPed(ped)
         end
     end
 
-    local successChance = math.random(1, 100)
     local getRobbed = math.random(1, 100)
-    if successChance <= config.successChance then hasTarget = false return end
-
+    -- Get drug offer first to determine tier-based success rate
     currentOfferDrug = lib.callback.await('qb-drugs:server:getDrugOffer', false)
 
     if currentOfferDrug == nil then
         exports.qbx_core:Notify(locale('error.no_drugs_left'), 'error')
+        hasTarget = false
+        return
+    end
+
+    -- Apply tier-based success rate instead of global success chance
+    local drugTier = config.drugTiers[currentOfferDrug.chosen.item]
+    local drugSuccessRate = drugTier and drugTier.successRate or config.successChance
+    
+    local successChance = math.random(1, 100)
+    if successChance > drugSuccessRate then
+        hasTarget = false
+        -- Clean up the NPC
+        SetPedKeepTask(ped, false)
+        SetEntityAsNoLongerNeeded(ped)
+        ClearPedTasksImmediately(ped)
         return
     end
 
@@ -250,7 +264,15 @@ local function sellToPed(ped)
             end
             Wait(0)
         end
-        Wait(math.random(4000, 7000))
+        -- Reduced cooldown for faster turnover (was 4000-7000ms, now 1000-2000ms)
+        Wait(math.random(config.postSaleCooldownMin, config.postSaleCooldownMax))
+        
+        -- Cleanup lastPed array periodically to prevent NPC blacklisting
+        interactionCount = interactionCount + 1
+        if interactionCount >= config.lastPedCleanupInterval then
+            lastPed = {}
+            interactionCount = 0
+        end
     end
 end
 
@@ -279,6 +301,8 @@ local function toggleSelling()
         stealingPed = nil
         stealData = {}
         cornerselling = false
+        interactionCount = 0 -- Reset interaction count when stopping
+        lastPed = {} -- Clear lastPed array when stopping
         exports.qbx_core:Notify(locale('info.stopped_selling_drugs'))
     end
 end

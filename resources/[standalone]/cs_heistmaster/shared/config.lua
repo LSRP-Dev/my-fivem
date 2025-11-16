@@ -59,7 +59,7 @@ Config.Heists = {
     fleeca_legion = {
         label = "Fleeca Bank - Legion",
 
-        requiredPolice = 3,
+        requiredPolice = 0,
         cooldown = 45 * 60,
         requiredItem = 'heist_laptop',
 
@@ -131,7 +131,7 @@ Config.Heists = {
     jewellery_vangelico = {
         label = "Vangelico Jewellery Store",
 
-        requiredPolice = 4,
+        requiredPolice = 0,
         cooldown = 60 * 60,
         requiredItem = nil,
 

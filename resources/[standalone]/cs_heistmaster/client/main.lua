@@ -136,10 +136,21 @@ local function runHeistThread(heistId, heist)
                     handleStepAlert(heistId, heist, step)
 
                     if step.action == 'hack' then
+                        RequestAnimDict('anim@heists@prison_heiststation@cop_reactions')
+                        while not HasAnimDictLoaded('anim@heists@prison_heiststation@cop_reactions') do Wait(0) end
+
+                        TaskPlayAnim(ped, 'anim@heists@prison_heiststation@cop_reactions', 'console_peek_a', 8.0, -8.0, -1, 1, 0.0, false, false, false)
+
                         success = lib.skillCheck(step.difficulty or { 'medium', 'medium', 'hard' })
+                        ClearPedTasks(ped)
 
                     elseif step.action == 'drill' then
                         local duration = (step.time or 20000)
+                        RequestAnimDict('anim@heists@fleeca_bank@drilling')
+                        while not HasAnimDictLoaded('anim@heists@fleeca_bank@drilling') do Wait(0) end
+
+                        TaskPlayAnim(ped, 'anim@heists@fleeca_bank@drilling', 'drill_straight_idle', 8.0, -8.0, duration, 1, 0.0, false, false, false)
+
                         lib.progressCircle({
                             duration = duration,
                             label = step.label or 'Drilling...',
@@ -149,11 +160,14 @@ local function runHeistThread(heistId, heist)
                             disable = { move = true, car = true, combat = true },
                         })
 
+                        ClearPedTasks(ped)
+
                     elseif step.action == 'smash' then
-                        -- simple smash animation + progress
                         RequestAnimDict('melee@unarmed@streamed_core_fps')
                         while not HasAnimDictLoaded('melee@unarmed@streamed_core_fps') do Wait(0) end
+
                         TaskPlayAnim(ped, 'melee@unarmed@streamed_core_fps', 'ground_attack_0', 8.0, -8.0, step.time or 4000, 0, 0.0, false, false, false)
+
                         lib.progressCircle({
                             duration = step.time or 4000,
                             label = step.label or 'Smashing...',
@@ -162,10 +176,17 @@ local function runHeistThread(heistId, heist)
                             canCancel = false,
                             disable = { move = true, car = true, combat = true },
                         })
+
                         ClearPedTasks(ped)
 
                     elseif step.action == 'loot' then
+                        RequestAnimDict('anim@heists@ornate_bank@grab_cash')
+                        while not HasAnimDictLoaded('anim@heists@ornate_bank@grab_cash') do Wait(0) end
+
+                        TaskPlayAnim(ped, 'anim@heists@ornate_bank@grab_cash', 'grab', 8.0, -8.0, -1, 1, 0.0, false, false, false)
+
                         success = lib.skillCheck(step.difficulty or { 'easy', 'medium' })
+                        ClearPedTasks(ped)
 
                     elseif step.action == 'escape' then
                         -- must get away from the start point

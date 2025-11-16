@@ -72,6 +72,7 @@ Config.Heists = {
         vault = {
             coords = { x = 149.93, y = -1047.52, z = 29.37 },
             heading = 160.0,
+            doorModel = 'v_ilev_gb_vauldr',  -- NEW: the vault door model to spawn
         },
 
         guards = {

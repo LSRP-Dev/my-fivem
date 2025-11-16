@@ -5,8 +5,11 @@ local ActiveHeists = {}  -- [id] = { state, lastStart }
 local HeistAlerts = {} -- [heistId] = true if cops already alerted
 local ClerkPanicCooldown = {} -- prevents spam
 
+-- Centralized heist state tracking
+local HeistServerState = HeistServerState or {} -- [heistId] = "idle" | "active" | "cooldown"
+
 -- PROMPT B: Vault door state tracking
-local FleecaVaultState = {} -- [heistId] = { spawned = false, open = false }
+local FleecaVaultState = FleecaVaultState or {} -- [heistId] = { spawned = false, open = false }
 
 -- PROMPT C: Loot tracking
 local HeistLootServerState = {} -- [heistId] = { [lootKey] = true }
@@ -74,6 +77,14 @@ local function giveItem(src, itemName, amount)
     else
         debugPrint(('GiveItem fallback: %s gets %sx %s'):format(src, amount, itemName))
     end
+end
+
+-- Centralized heist state management
+local function setHeistState(heistId, state)
+    HeistServerState[heistId] = state
+    -- broadcast to all clients so their local state updates
+    TriggerClientEvent('cs_heistmaster:client:setHeistState', -1, heistId, state)
+    debugPrint(('Heist state changed: %s = %s'):format(heistId, state))
 end
 
 ----------------------------------------------------------------
@@ -186,8 +197,8 @@ RegisterNetEvent('cs_heistmaster:requestStart', function(heistId)
     state.state = 'in_progress'
     state.lastStart = now
 
-    -- PROMPT A: Set client state to active
-    TriggerClientEvent('cs_heistmaster:client:setHeistState', -1, heistId, 'active')
+    -- Use centralized state management
+    setHeistState(heistId, "active")
 
     -- PROMPT C: Initialize loot tracking
     HeistLootServerState[heistId] = {}
@@ -203,7 +214,8 @@ RegisterNetEvent('cs_heistmaster:requestStart', function(heistId)
     -- PROMPT B: Initialize vault door state and spawn for Fleeca banks
     if heist.heistType == 'fleeca' and heist.vault and heist.vault.coords then
         FleecaVaultState[heistId] = { spawned = true, open = false }
-        TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', -1, heistId, heist.vault.coords, heist.vault.heading or 160.0, false)
+        local doorModel = heist.vault.doorModel or 'v_ilev_gb_vauldr'
+        TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', -1, heistId, heist.vault.coords, heist.vault.heading or 160.0, doorModel, false)
     end
 end)
 
@@ -222,8 +234,8 @@ RegisterNetEvent('cs_heistmaster:finishHeist', function(heistId)
     state.state = 'cooldown'
     HeistAlerts[heistId] = nil -- reset alert state
 
-    -- PROMPT A: Set client state to cooldown
-    TriggerClientEvent('cs_heistmaster:client:setHeistState', -1, heistId, 'cooldown')
+    -- Use centralized state management
+    setHeistState(heistId, "cooldown")
 
     -- Item rewards (cash rewards converted to black_money items)
     local itemList = heist.rewards and heist.rewards.items
@@ -246,8 +258,8 @@ RegisterNetEvent('cs_heistmaster:finishHeist', function(heistId)
     -- PROMPT C: Clear loot tracking after cooldown
     SetTimeout((heist.cooldown or 0) * 1000, function()
         HeistLootServerState[heistId] = nil
-        -- PROMPT A: Reset to idle after cooldown
-        TriggerClientEvent('cs_heistmaster:client:setHeistState', -1, heistId, 'idle')
+        -- Reset to idle after cooldown
+        setHeistState(heistId, "idle")
     end)
 
     TriggerClientEvent('cs_heistmaster:client:cleanupHeist', -1, heistId)
@@ -268,8 +280,8 @@ RegisterNetEvent('cs_heistmaster:abortHeist', function(heistId)
     state.state = 'idle'
     HeistAlerts[heistId] = nil -- reset alert state
     
-    -- PROMPT A: Set client state to cooldown on abort
-    TriggerClientEvent('cs_heistmaster:client:setHeistState', -1, heistId, 'cooldown')
+    -- Use centralized state management
+    setHeistState(heistId, "cooldown")
     
     -- PROMPT C: Clear loot tracking
     HeistLootServerState[heistId] = nil
@@ -447,12 +459,13 @@ end)
 ----------------------------------------------------------------
 
 -- PROMPT B: Sync vault doors for late joiners
-RegisterNetEvent('cs_heistmaster:server:syncVaultDoor', function()
+RegisterNetEvent('cs_heistmaster:server:syncVaultDoors', function()
     local src = source
-    for heistId, state in pairs(FleecaVaultState) do
-        local heist = Heists[heistId]
-        if heist and heist.vault and heist.vault.coords then
-            TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', src, heistId, heist.vault.coords, heist.vault.heading or 160.0, state.open)
+    for heistId, heist in pairs(Heists) do
+        if heist.heistType == 'fleeca' and heist.vault and heist.vault.coords then
+            local state = FleecaVaultState[heistId] or { spawned = false, open = false }
+            local doorModel = heist.vault.doorModel or 'v_ilev_gb_vauldr'
+            TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', src, heistId, heist.vault.coords, heist.vault.heading or 160.0, doorModel, state.open)
         end
     end
 end)
@@ -510,12 +523,14 @@ RegisterCommand('heist_start', function(source, args)
     TriggerClientEvent('cs_heistmaster:client:forceStart', src, id)
 end, false)
 
--- PROMPT B: Initialize vault door states on resource start
+-- Initialize heist and vault states after config loads
 CreateThread(function()
     Wait(1000) -- Wait for config to load
     for heistId, heist in pairs(Heists) do
+        HeistServerState[heistId] = HeistServerState[heistId] or "idle"
+        
         if heist.heistType == 'fleeca' then
-            FleecaVaultState[heistId] = { spawned = false, open = false }
+            FleecaVaultState[heistId] = FleecaVaultState[heistId] or { spawned = false, open = false }
         end
     end
 end)

@@ -99,9 +99,9 @@ const LoadingScreenConfig = {
         volume: 0.1, // 0.0 to 1.0
         tracks: [
             {
-                title: "Warriyo - Mortals",
-                artist: "Laura Brehm",
-                url: "assets/music/music1.mp3"
+                title: "Pink Pony Club ",
+                artist: "Chappell Roan",
+                url: "ytmp3free.cc_chappell-roan-pink-pony-club-official-music-video-youtubemp3free.org"
             },
 
             { 

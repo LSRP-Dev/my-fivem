@@ -7,6 +7,18 @@ local GuardPeds = {}
 local TellerPeds = {}
 local CashRegisters = {}
 
+-- Create relationship groups on client start
+CreateThread(function()
+    -- Create GUARD relationship group if it doesn't exist
+    if not DoesRelationshipGroupExist(GetHashKey('GUARD')) then
+        AddRelationshipGroup('GUARD')
+    end
+    
+    -- Set GUARD to hate PLAYER (5 = hate relationship)
+    SetRelationshipBetweenGroups(5, GetHashKey('GUARD'), GetHashKey('PLAYER'))
+    SetRelationshipBetweenGroups(5, GetHashKey('PLAYER'), GetHashKey('GUARD'))
+end)
+
 -- Track guard kills on client
 AddEventHandler('entityDamaged', function(victim, damageData)
     if not victim or not DoesEntityExist(victim) then return end
@@ -25,16 +37,18 @@ AddEventHandler('entityDamaged', function(victim, damageData)
 end)
 
 -- Track register shots using entity damaged event
-AddEventHandler('entityDamaged', function(victim, damageData)
-    if not victim or not DoesEntityExist(victim) then return end
-    if IsPedAPlayer(victim) then return end
-    
-    local netId = NetworkGetNetworkIdFromEntity(victim)
-    if CashRegisters[netId] and not CashRegisters[netId].opened then
-        -- Check if entity is a cash register object
-        if GetEntityType(victim) == 3 then -- OBJECT type
+AddEventHandler('gameEventTriggered', function(name, args)
+    if name == 'CEventNetworkEntityDamage' then
+        local victim = args[1]
+        if not victim or not DoesEntityExist(victim) then return end
+        if GetEntityType(victim) ~= 3 then return end  -- Only objects
+        
+        local netId = NetworkGetNetworkIdFromEntity(victim)
+        if CashRegisters[netId] and not CashRegisters[netId].opened then
             local health = GetEntityHealth(victim)
             if health < 100 then
+                -- Mark as opened and notify server
+                CashRegisters[netId].opened = true
                 TriggerServerEvent('cs_heistbuilder:server:registerHit', netId)
             end
         end
@@ -47,26 +61,73 @@ RegisterNetEvent('cs_heistbuilder:client:configureGuard', function(netId, robber
         local ped = NetworkGetEntityFromNetworkId(netId)
         if not ped or not DoesEntityExist(ped) then 
             -- Wait a bit for entity to sync
-            Wait(500)
+            Wait(1000)
             ped = NetworkGetEntityFromNetworkId(netId)
             if not ped or not DoesEntityExist(ped) then return end
         end
+        
+        -- Store original coords from server data for positioning
+        local serverCoords = config.coords or {}
         
         -- Network/migration settings (client-side only)
         SetNetworkIdCanMigrate(netId, false)
         
         -- Configure ped behavior (client-side natives)
         SetEntityAsMissionEntity(ped, true, true)
-        SetPedFleeAttributes(ped, config.fleeAttributes or 0, false)
-        SetPedCombatAttributes(ped, config.combatAttributes or 46, true)
-        SetPedCombatAbility(ped, config.combatAbility or 2)
+        SetPedKeepTask(ped, true)
+        
+        -- FLEE: Set to 0, 0 to prevent fleeing (0 = never flee, false = don't allow)
+        SetPedFleeAttributes(ped, 0, false)
+        
+        -- COMBAT: Make them aggressive fighters
+        SetPedCombatAttributes(ped, 46, true)  -- Can use cover and vehicles
+        SetPedCombatAbility(ped, 100)  -- Expert combat ability
+        SetPedCombatMovement(ped, 2)  -- Offensive movement
+        SetPedCombatRange(ped, 2)  -- Long range combat
         SetPedAccuracy(ped, config.accuracy or 70)
         SetPedCanSwitchWeapon(ped, true)
-        GiveWeaponToPed(ped, GetHashKey(config.weapon or 'WEAPON_CARBINERIFLE'), 250, false, true)
         SetPedDropsWeaponsWhenDead(ped, false)
-        SetEntityInvincible(ped, config.invincible == false and false or true)
+        
+        -- ALERTNESS: Make them aware
+        SetPedAlertness(ped, 3)  -- Maximum alertness
+        SetPedSeeingRange(ped, 100.0)
+        SetPedHearingRange(ped, 100.0)
+        
+        -- Give weapon
+        GiveWeaponToPed(ped, GetHashKey(config.weapon or 'WEAPON_CARBINERIFLE'), 250, false, true)
+        SetPedCurrentWeaponVisible(ped, true, true)
+        
+        -- RELATIONSHIP: Make hostile to players
+        SetPedRelationshipGroupHash(ped, GetHashKey('GUARD'))
+        SetRelationshipBetweenGroups(5, GetHashKey('GUARD'), GetHashKey('PLAYER'))  -- 5 = hate
+        
+        -- PREVENT FLEEING: Disable panic/flee behavior
+        SetPedConfigFlag(ped, 287, true)  -- PED_FLAG_NO_FLEE
+        SetPedConfigFlag(ped, 281, true)  -- PED_FLAG_CAN_ATTACK_FRIENDLY
+        
+        -- HEALTH: Make guards killable (set max health to 200 like players)
+        SetEntityMaxHealth(ped, 200)
+        SetEntityHealth(ped, 200)
+        SetPedDiesWhenInjured(ped, true)  -- Allow them to die
+        SetEntityInvincible(ped, false)  -- Make them killable!
+        
         SetBlockingOfNonTemporaryEvents(ped, true)
-        TaskGuardCurrentPosition(ped, 15.0, 15.0, 1)
+        
+        -- Remove any target interactions (prevent third eye/pick lock)
+        if exports.ox_target and exports.ox_target.removeLocalEntity then
+            exports.ox_target:removeLocalEntity(ped)
+        end
+        if exports['qb-target'] and exports['qb-target'].RemoveTargetEntity then
+            exports['qb-target']:RemoveTargetEntity(ped)
+        end
+        
+        -- Set ped to exact spawn location and heading from server
+        if serverCoords.x and serverCoords.y and serverCoords.z then
+            SetEntityCoords(ped, serverCoords.x, serverCoords.y, serverCoords.z, false, false, false, true)
+            if serverCoords.w then
+                SetEntityHeading(ped, serverCoords.w)
+            end
+        end
         
         -- Track on client
         GuardPeds[netId] = {
@@ -74,6 +135,35 @@ RegisterNetEvent('cs_heistbuilder:client:configureGuard', function(netId, robber
             coords = GetEntityCoords(ped),
             ped = ped
         }
+        
+        -- Monitor for player presence and combat
+        CreateThread(function()
+            while DoesEntityExist(ped) and not IsEntityDead(ped) do
+                Wait(200)
+                local playerPed = PlayerPedId()
+                if DoesEntityExist(playerPed) then
+                    local distance = #(GetEntityCoords(ped) - GetEntityCoords(playerPed))
+                    
+                    -- If player is nearby with weapon drawn, guard should be alert
+                    if distance < 20.0 then
+                        -- If player is aiming at guard or shooting nearby, make guard combat
+                        if IsPlayerFreeAiming(PlayerId()) or IsPedShooting(playerPed) or HasEntityBeenDamagedByEntity(ped, playerPed, true) then
+                            ClearPedTasks(ped)
+                            TaskCombatPed(ped, playerPed, 0, 16)
+                            SetPedKeepTask(ped, true)
+                        elseif not IsPedInCombat(ped) and distance > 5.0 then
+                            -- Guard position when not in combat and player is far
+                            TaskGuardCurrentPosition(ped, 10.0, 10.0, 1)
+                        end
+                    else
+                        -- Default: Guard position when player is far
+                        if not IsPedInCombat(ped) then
+                            TaskGuardCurrentPosition(ped, 15.0, 15.0, 1)
+                        end
+                    end
+                end
+            end
+        end)
     end)
 end)
 
@@ -83,7 +173,7 @@ RegisterNetEvent('cs_heistbuilder:client:configureTeller', function(netId, robbe
         local ped = NetworkGetEntityFromNetworkId(netId)
         if not ped or not DoesEntityExist(ped) then 
             -- Wait a bit for entity to sync
-            Wait(500)
+            Wait(1000)
             ped = NetworkGetEntityFromNetworkId(netId)
             if not ped or not DoesEntityExist(ped) then return end
         end
@@ -93,10 +183,36 @@ RegisterNetEvent('cs_heistbuilder:client:configureTeller', function(netId, robbe
         
         -- Configure ped behavior (client-side natives)
         SetEntityAsMissionEntity(ped, true, true)
-        SetPedFleeAttributes(ped, 512, true)
+        SetPedKeepTask(ped, true)
+        
+        -- FLEE: Set to 0, 0 to prevent fleeing (they should stay at counter)
+        SetPedFleeAttributes(ped, 0, false)
+        
+        -- PREVENT FLEEING: Disable panic/flee behavior
+        SetPedConfigFlag(ped, 287, true)  -- PED_FLAG_NO_FLEE
+        
+        -- COMBAT: Disable combat so they don't fight
         SetPedCombatAttributes(ped, 0, false)
+        SetPedCombatAbility(ped, 0)
+        
+        -- HEALTH: Make tellers killable
+        SetEntityMaxHealth(ped, 200)
+        SetEntityHealth(ped, 200)
+        SetPedDiesWhenInjured(ped, true)
+        SetEntityInvincible(ped, false)
+        
+        -- Keep them in place
         SetBlockingOfNonTemporaryEvents(ped, true)
+        FreezeEntityPosition(ped, false)  -- Allow standing still task
         TaskStandStill(ped, -1)
+        
+        -- Remove any target interactions (prevent third eye/pick lock)
+        if exports.ox_target and exports.ox_target.removeLocalEntity then
+            exports.ox_target:removeLocalEntity(ped)
+        end
+        if exports['qb-target'] and exports['qb-target'].RemoveTargetEntity then
+            exports['qb-target']:RemoveTargetEntity(ped)
+        end
         
         -- Track on client
         TellerPeds[netId] = {
@@ -120,6 +236,14 @@ RegisterNetEvent('cs_heistbuilder:client:configureRegister', function(netId, rob
         
         -- Network/migration settings (client-side only)
         SetNetworkIdCanMigrate(netId, false)
+        
+        -- Remove any target interactions (prevent third eye/pick lock)
+        if exports.ox_target and exports.ox_target.removeLocalEntity then
+            exports.ox_target:removeLocalEntity(obj)
+        end
+        if exports['qb-target'] and exports['qb-target'].RemoveTargetEntity then
+            exports['qb-target']:RemoveTargetEntity(obj)
+        end
         
         -- Track on client
         CashRegisters[netId] = {

@@ -13,9 +13,18 @@ local function spawnGuard(robberyId, guardData)
     local weapon = guardData.weapon or 'WEAPON_CARBINERIFLE'
     
     CreateThread(function()
+        -- Validate coordinates
+        if not coords.x or not coords.y or not coords.z then
+            print(('[cs_heistbuilder] ERROR: Invalid guard coordinates for robbery %s'):format(robberyId))
+            return
+        end
+        
         -- Server can create networked peds
         local ped = CreatePed(4, GetHashKey(model), coords.x, coords.y, coords.z, coords.w or 0.0, true, true)
-        if not DoesEntityExist(ped) then return end
+        if not DoesEntityExist(ped) then 
+            print(('[cs_heistbuilder] ERROR: Failed to create guard at %s, %s, %s'):format(coords.x, coords.y, coords.z))
+            return 
+        end
         
         local netId = NetworkGetNetworkIdFromEntity(ped)
         ActiveGuards[netId] = {
@@ -31,7 +40,8 @@ local function spawnGuard(robberyId, guardData)
             combatAttributes = 46,
             combatAbility = 2,
             accuracy = 70,
-            invincible = false
+            invincible = false,
+            coords = coords  -- Pass coords for positioning
         })
     end)
 end
@@ -41,9 +51,18 @@ local function spawnTeller(robberyId, tellerData)
     local model = tellerData.model or 's_f_y_shop_low'
     
     CreateThread(function()
+        -- Validate coordinates
+        if not coords.x or not coords.y or not coords.z then
+            print(('[cs_heistbuilder] ERROR: Invalid teller coordinates for robbery %s'):format(robberyId))
+            return
+        end
+        
         -- Server can create networked peds
         local ped = CreatePed(4, GetHashKey(model), coords.x, coords.y, coords.z, coords.w or 0.0, true, true)
-        if not DoesEntityExist(ped) then return end
+        if not DoesEntityExist(ped) then 
+            print(('[cs_heistbuilder] ERROR: Failed to create teller at %s, %s, %s'):format(coords.x, coords.y, coords.z))
+            return 
+        end
         
         local netId = NetworkGetNetworkIdFromEntity(ped)
         ActiveTellers[netId] = {

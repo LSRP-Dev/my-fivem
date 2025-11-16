@@ -94,7 +94,22 @@ function SpawnBankGuards(heistId)
     local heist = Config.Heists[heistId]
     if not heist or not heist.guards or #heist.guards == 0 then return end
 
-    -- Only cleanup if guards already exist (for respawn scenarios)
+    -- Check if guards already exist and are valid - don't respawn if they do
+    if BankGuards[heistId] and #BankGuards[heistId] > 0 then
+        local allExist = true
+        for _, ped in ipairs(BankGuards[heistId]) do
+            if not DoesEntityExist(ped) then
+                allExist = false
+                break
+            end
+        end
+        if allExist then
+            debugPrint(('Bank guards already exist for heist %s, skipping spawn'):format(heistId))
+            return -- Guards already exist, don't respawn
+        end
+    end
+
+    -- Cleanup existing guards first (only if some are missing)
     if BankGuards[heistId] then
         for _, ped in ipairs(BankGuards[heistId]) do
             if DoesEntityExist(ped) then DeletePed(ped) end
@@ -209,9 +224,17 @@ function SpawnClerk(heistId)
     local heist = Config.Heists[heistId]
     if not heist or not heist.clerk or not heist.clerk.enabled then return end
 
-    -- Only cleanup if clerk already exists (for respawn scenarios)
+    -- Check if clerk already exists and is valid - don't respawn if it does
     if StoreClerks[heistId] and DoesEntityExist(StoreClerks[heistId]) then
-        DeletePed(StoreClerks[heistId])
+        debugPrint(('Store clerk already exists for heist %s, skipping spawn'):format(heistId))
+        return -- Clerk already exists, don't respawn
+    end
+
+    -- Only cleanup if clerk exists but is invalid (for respawn scenarios)
+    if StoreClerks[heistId] then
+        if DoesEntityExist(StoreClerks[heistId]) then
+            DeletePed(StoreClerks[heistId])
+        end
     end
 
     local modelName = heist.clerk.npcModel or 'mp_m_shopkeep_01'
@@ -1314,30 +1337,51 @@ end)
 
 local function SpawnAllHeistElements()
     for heistId, heist in pairs(Heists) do
-        -- Spawn bank guards for bank heists (fleeca, etc.)
+        -- Spawn bank guards for bank heists (fleeca, etc.) - only if they don't exist
         if (heist.heistType == 'fleeca' or heist.heistType == 'bank') and heist.guards then
-            SpawnBankGuards(heistId)
+            -- Check if guards already exist before spawning
+            local needsSpawn = true
+            if BankGuards[heistId] and #BankGuards[heistId] > 0 then
+                local allExist = true
+                for _, ped in ipairs(BankGuards[heistId]) do
+                    if not DoesEntityExist(ped) then
+                        allExist = false
+                        break
+                    end
+                end
+                if allExist then
+                    needsSpawn = false
+                end
+            end
+            if needsSpawn then
+                SpawnBankGuards(heistId)
+            end
         end
         
-        -- Spawn clerks for store heists
+        -- Spawn clerks for store heists - only if they don't exist
         if heist.heistType == 'store' and heist.clerk and heist.clerk.enabled then
-            SpawnClerk(heistId)
+            -- Check if clerk already exists before spawning
+            if not StoreClerks[heistId] or not DoesEntityExist(StoreClerks[heistId]) then
+                SpawnClerk(heistId)
+            end
         end
         
-        -- Spawn vault doors for fleeca banks
+        -- Spawn vault doors for fleeca banks - only if they don't exist
         if heist.heistType == 'fleeca' and heist.vault and heist.vault.coords then
-            local hash = joaat(heist.vault.doorModel or 'v_ilev_gb_vauldr')
-            RequestModel(hash)
-            while not HasModelLoaded(hash) do Wait(10) end
-            
-            local coords = vecFromTable(heist.vault.coords)
-            local obj = CreateObjectNoOffset(hash, coords.x, coords.y, coords.z, true, true, false)
-            local startHeading = heist.vault.heading or 160.0
-            SetEntityRotation(obj, 0.0, 0.0, startHeading, 2, true)
-            FreezeEntityPosition(obj, true)
-            
-            VaultDoors[heistId] = { obj = obj, heading = startHeading, open = false }
-            debugPrint(('Vault door auto-spawned: %s'):format(heistId))
+            if not VaultDoors[heistId] or not DoesEntityExist(VaultDoors[heistId].obj) then
+                local hash = joaat(heist.vault.doorModel or 'v_ilev_gb_vauldr')
+                RequestModel(hash)
+                while not HasModelLoaded(hash) do Wait(10) end
+                
+                local coords = vecFromTable(heist.vault.coords)
+                local obj = CreateObjectNoOffset(hash, coords.x, coords.y, coords.z, true, true, false)
+                local startHeading = heist.vault.heading or 160.0
+                SetEntityRotation(obj, 0.0, 0.0, startHeading, 2, true)
+                FreezeEntityPosition(obj, true)
+                
+                VaultDoors[heistId] = { obj = obj, heading = startHeading, open = false }
+                debugPrint(('Vault door auto-spawned: %s'):format(heistId))
+            end
         end
     end
 end
@@ -1423,10 +1467,8 @@ RegisterNetEvent('cs_heistmaster:client:cleanupHeist', function(heistId)
     -- A.4: Delay clerk respawn until cooldown ends
     local heist = Heists[heistId]
     if heist then
-        -- Respawn bank guards immediately
-        if (heist.heistType == 'fleeca' or heist.heistType == 'bank') and heist.guards then
-            SpawnBankGuards(heistId)
-        end
+        -- DON'T respawn bank guards on cleanup - they should persist and only respawn if missing
+        -- Guards are managed by SpawnAllHeistElements which checks if they exist
         
         -- A.4: Delay clerk respawn until cooldown ends
         if heist.heistType == 'store' and heist.clerk and heist.clerk.enabled then
@@ -1436,25 +1478,16 @@ RegisterNetEvent('cs_heistmaster:client:cleanupHeist', function(heistId)
                 -- Check if heist is still in cooldown before respawning
                 local state = HeistClientState[heistId] or "idle"
                 if state == "cooldown" or state == "idle" then
-                    SpawnClerk(heistId)
-                    debugPrint(('Clerk respawned after cooldown: %s'):format(heistId))
+                    -- Only respawn if clerk doesn't exist
+                    if not StoreClerks[heistId] or not DoesEntityExist(StoreClerks[heistId]) then
+                        SpawnClerk(heistId)
+                        debugPrint(('Clerk respawned after cooldown: %s'):format(heistId))
+                    end
                 end
             end)
         end
         
-        -- Respawn vault doors immediately
-        if heist.heistType == 'fleeca' and heist.vault and heist.vault.coords then
-            local hash = joaat(heist.vault.doorModel or 'v_ilev_gb_vauldr')
-            RequestModel(hash)
-            while not HasModelLoaded(hash) do Wait(10) end
-            
-            local coords = vecFromTable(heist.vault.coords)
-            local obj = CreateObjectNoOffset(hash, coords.x, coords.y, coords.z, true, true, false)
-            local startHeading = heist.vault.heading or 160.0
-            SetEntityRotation(obj, 0.0, 0.0, startHeading, 2, true)
-            FreezeEntityPosition(obj, true)
-            
-            VaultDoors[heistId] = { obj = obj, heading = startHeading, open = false }
-        end
+        -- DON'T respawn vault doors on cleanup - they should persist and only respawn if missing
+        -- Vault doors are managed by SpawnAllHeistElements which checks if they exist
     end
 end)

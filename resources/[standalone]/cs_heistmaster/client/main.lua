@@ -91,7 +91,7 @@ end
 -- BANK GUARD SYSTEM (Start heist when guards are shot)
 -- ============================================================
 
-local BankGuards = {} -- [heistId] = {ped1, ped2, ...}
+local BankGuards = {} -- [heistId] = { [guardIndex] = ped } - Track by index to prevent duplicates
 local GuardSpawning = {} -- [heistId] = true (prevents concurrent spawns)
 
 function SpawnBankGuards(heistId)
@@ -104,40 +104,59 @@ function SpawnBankGuards(heistId)
         return
     end
 
-    -- Check if guards already exist and are valid - don't respawn if they do
-    if BankGuards[heistId] and #BankGuards[heistId] > 0 then
-        local allExist = true
-        for _, ped in ipairs(BankGuards[heistId]) do
-            if not DoesEntityExist(ped) then
-                allExist = false
-                break
+    -- Initialize guard table if needed
+    if not BankGuards[heistId] then
+        BankGuards[heistId] = {}
+    end
+
+    -- Check each guard spawn location individually - only spawn if guard doesn't exist at that location
+    local guardsToSpawn = {}
+    for guardIndex, g in ipairs(heist.guards) do
+        local existingGuard = BankGuards[heistId][guardIndex]
+        
+        -- Only spawn if guard doesn't exist or is invalid at this location
+        if not existingGuard or not DoesEntityExist(existingGuard) then
+            -- Cleanup invalid reference
+            if existingGuard and not DoesEntityExist(existingGuard) then
+                BankGuards[heistId][guardIndex] = nil
             end
+            
+            table.insert(guardsToSpawn, { index = guardIndex, data = g })
+        else
+            debugPrint(('Bank guard at location %d already exists for heist %s, skipping'):format(guardIndex, heistId))
         end
-        if allExist then
-            debugPrint(('Bank guards already exist for heist %s, skipping spawn'):format(heistId))
-            return -- Guards already exist, don't respawn
-        end
+    end
+
+    -- If all guards already exist, skip spawning
+    if #guardsToSpawn == 0 then
+        debugPrint(('All bank guards already exist for heist %s, skipping spawn'):format(heistId))
+        return
     end
 
     -- Mark as spawning to prevent concurrent attempts
     GuardSpawning[heistId] = true
 
-    -- Cleanup existing guards first (only if some are missing)
-    if BankGuards[heistId] then
-        for _, ped in ipairs(BankGuards[heistId]) do
-            if DoesEntityExist(ped) then DeletePed(ped) end
-        end
-    end
-
-    BankGuards[heistId] = {}
-
-    for _, g in ipairs(heist.guards) do
+    -- Spawn only the guards that don't exist
+    for _, guardInfo in ipairs(guardsToSpawn) do
+        local guardIndex = guardInfo.index
+        local g = guardInfo.data
+        
         local model = joaat(g.model or 's_m_m_security_01')
         RequestModel(model)
         while not HasModelLoaded(model) do Wait(10) end
 
-        local coords = vecFromTable(g.coords, g.coords.w or 0.0)
-        local ped = CreatePed(4, model, coords.x, coords.y, coords.z, coords.w or 0.0, true, true)
+        local baseCoords = vecFromTable(g.coords, g.coords.w or 0.0)
+        
+        -- FIX: Randomize spawn position slightly to prevent clipping (0.3m radius)
+        local randomOffset = math.random() * 0.3
+        local randomAngle = math.random() * 360.0
+        local spawnX = baseCoords.x + (math.cos(math.rad(randomAngle)) * randomOffset)
+        local spawnY = baseCoords.y + (math.sin(math.rad(randomAngle)) * randomOffset)
+        local spawnZ = baseCoords.z
+        local spawnHeading = baseCoords.w or 0.0
+        
+        -- Spawn guard slightly away and make them walk to position (more natural)
+        local ped = CreatePed(4, model, spawnX, spawnY, spawnZ, spawnHeading, true, true)
         
         SetEntityAsMissionEntity(ped, true, true)
         SetPedArmour(ped, g.armor or 50)
@@ -154,8 +173,17 @@ function SpawnBankGuards(heistId)
         SetPedCombatAttributes(ped, 46, true)
         SetBlockingOfNonTemporaryEvents(ped, false) -- Allow them to react
 
-        table.insert(BankGuards[heistId], ped)
-        debugPrint(('Bank guard spawned for heist: %s'):format(heistId))
+        -- OPTIONAL: Make guard walk to exact position if spawned away
+        if randomOffset > 0.1 then
+            TaskGoStraightToCoord(ped, baseCoords.x, baseCoords.y, baseCoords.z, 1.0, 5000, spawnHeading, 0.1)
+        else
+            -- If close enough, just set heading
+            SetEntityHeading(ped, spawnHeading)
+        end
+
+        -- Store guard by index to prevent duplicates at same location
+        BankGuards[heistId][guardIndex] = ped
+        debugPrint(('Bank guard spawned at location %d for heist: %s'):format(guardIndex, heistId))
     end
     
     -- Clear spawning lock
@@ -163,8 +191,8 @@ function SpawnBankGuards(heistId)
 end
 
 function IsBankGuard(entity)
-    for heistId, guardList in pairs(BankGuards) do
-        for _, ped in ipairs(guardList) do
+    for heistId, guardTable in pairs(BankGuards) do
+        for guardIndex, ped in pairs(guardTable) do
             if entity == ped then
                 return heistId
             end
@@ -202,7 +230,7 @@ local function handleGuardDamage(victim, attacker)
     CreateThread(function()
         Wait(1000) -- Wait for heist to initialize
         if BankGuards[heistId] then
-            for _, ped in ipairs(BankGuards[heistId]) do
+            for guardIndex, ped in pairs(BankGuards[heistId]) do
                 if DoesEntityExist(ped) then
                     SetPedAlertness(ped, 3)
                     SetPedCombatAttributes(ped, 46, true)
@@ -543,24 +571,45 @@ RegisterNetEvent("cs_heistmaster:client:spawnVaultDoor", function(heistId, coord
 end)
 
 RegisterNetEvent("cs_heistmaster:client:openVaultDoor", function(heistId)
-    local door = VaultDoors[heistId]
-    if not door or not DoesEntityExist(door.obj) then return end
-    
-    local startHeading = door.heading
-    FreezeEntityPosition(door.obj, false)
-    
-    -- Use SetEntityRotation for proper vault door animation
-    for i = 1, 100 do
-        local angle = startHeading - (i * 1.0)
-        SetEntityRotation(door.obj, 0.0, 0.0, angle, 2, true)
-        Wait(15)
+    -- FIX: Use HeistState for vault door reference
+    local vaultObj = HeistState[heistId] and HeistState[heistId].vaultObj
+    if not vaultObj or not DoesEntityExist(vaultObj) then
+        -- Fallback to legacy VaultDoors
+        local door = VaultDoors[heistId]
+        if not door or not DoesEntityExist(door.obj) then return end
+        vaultObj = door.obj
     end
     
-    FreezeEntityPosition(door.obj, true)
-    door.open = true
+    local door = VaultDoors[heistId]
+    local startHeading = door and door.heading or 160.0
+    
+    -- FIX: Unfreeze door for animation
+    FreezeEntityPosition(vaultObj, false)
+    
+    -- FIX: Use SetEntityHeading with smooth rotation for visible door opening
+    local targetHeading = startHeading - 100.0 -- Rotate 100 degrees to open
+    local currentHeading = GetEntityHeading(vaultObj)
+    local rotationSteps = 50
+    local headingStep = (targetHeading - currentHeading) / rotationSteps
+    
+    -- Smooth rotation animation
+    for i = 1, rotationSteps do
+        local newHeading = currentHeading + (headingStep * i)
+        SetEntityHeading(vaultObj, newHeading)
+        Wait(20) -- 20ms per step = 1 second total animation
+    end
+    
+    -- Ensure final heading is set correctly
+    SetEntityHeading(vaultObj, targetHeading)
+    FreezeEntityPosition(vaultObj, true)
+    
+    -- Update door state
+    if door then
+        door.open = true
+    end
     
     -- Effects
-    local coords = GetEntityCoords(door.obj)
+    local coords = GetEntityCoords(vaultObj)
     UseParticleFxAssetNextCall("core")
     StartParticleFxNonLoopedAtCoord("ent_dst_electrical", coords.x, coords.y, coords.z, 0.0, 0.0, 0.0, 1.0, false, false, false)
     PlaySoundFromCoord(-1, "VAULT_DOOR_OPEN", coords.x, coords.y, coords.z, "dlc_heist_fleeca_bank_door_sounds", false, 1.0, false)
@@ -1455,18 +1504,18 @@ local function SpawnAllHeistElements()
     for heistId, heist in pairs(Heists) do
         -- Spawn bank guards for bank heists (fleeca, etc.) - only if they don't exist
         if (heist.heistType == 'fleeca' or heist.heistType == 'bank') and heist.guards then
-            -- Check if guards already exist before spawning
-            local needsSpawn = true
-            if BankGuards[heistId] and #BankGuards[heistId] > 0 then
-                local allExist = true
-                for _, ped in ipairs(BankGuards[heistId]) do
-                    if not DoesEntityExist(ped) then
-                        allExist = false
+            -- FIX: Check each guard location individually
+            local needsSpawn = false
+            if not BankGuards[heistId] then
+                needsSpawn = true
+            else
+                -- Check if any guard location is missing
+                for guardIndex = 1, #heist.guards do
+                    local existingGuard = BankGuards[heistId][guardIndex]
+                    if not existingGuard or not DoesEntityExist(existingGuard) then
+                        needsSpawn = true
                         break
                     end
-                end
-                if allExist then
-                    needsSpawn = false
                 end
             end
             if needsSpawn then
@@ -1558,8 +1607,17 @@ RegisterNetEvent('cs_heistmaster:client:cleanupHeist', function(heistId)
         guards[heistId] = nil
     end
     
-    -- DO NOT delete bank guards on cleanup - they should persist
-    -- Bank guards are only deleted when resource stops or heist is reset
+    -- FIX: Cleanup bank guards on heist end/abort to prevent duplicates
+    if BankGuards[heistId] then
+        for guardIndex, ped in pairs(BankGuards[heistId]) do
+            if DoesEntityExist(ped) then
+                DeletePed(ped)
+                debugPrint(('Bank guard %d deleted during cleanup for heist: %s'):format(guardIndex, heistId))
+            end
+        end
+        BankGuards[heistId] = nil
+        GuardSpawning[heistId] = nil -- Clear spawn lock
+    end
     
     -- Cleanup clerk (will respawn after cooldown)
     local clerkPed = StoreClerks[heistId] or SpawnedClerks[heistId]

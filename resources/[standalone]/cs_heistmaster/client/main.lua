@@ -93,14 +93,26 @@ end
 
 local BankGuards = {} -- [heistId] = { [guardIndex] = ped } - Track by index to prevent duplicates
 local GuardSpawning = {} -- [heistId] = true (prevents concurrent spawns)
+local GuardSpawnCooldown = {} -- [heistId] = timestamp (prevents frequent respawns)
 
 function SpawnBankGuards(heistId)
     local heist = Config.Heists[heistId]
-    if not heist or not heist.guards or #heist.guards == 0 then return end
+    if not heist or not heist.guards or #heist.guards == 0 then 
+        debugPrint(('SpawnBankGuards: No guards config for heist %s'):format(heistId))
+        return 
+    end
 
     -- CRITICAL FIX: Prevent concurrent spawns for the same heist with stronger lock
     if GuardSpawning[heistId] then
-        debugPrint(('Bank guard spawn already in progress for heist %s, skipping'):format(heistId))
+        debugPrint(('SpawnBankGuards: Spawn already in progress for heist %s, skipping'):format(heistId))
+        return
+    end
+    
+    -- SPAWN COOLDOWN: Check if we're in cooldown (30 seconds minimum)
+    local currentTime = GetGameTimer()
+    if GuardSpawnCooldown[heistId] and (currentTime - GuardSpawnCooldown[heistId]) < 30000 then
+        local remainingTime = math.ceil((30000 - (currentTime - GuardSpawnCooldown[heistId])) / 1000)
+        debugPrint(('SpawnBankGuards: Cooldown active for heist %s (%d seconds remaining)'):format(heistId, remainingTime))
         return
     end
 
@@ -161,6 +173,7 @@ function SpawnBankGuards(heistId)
 
     -- Mark as spawning to prevent concurrent attempts
     GuardSpawning[heistId] = true
+    debugPrint(('SpawnBankGuards: Starting spawn for heist %s (%d guards to spawn)'):format(heistId, #guardsToSpawn))
 
     -- Spawn only the guards that don't exist
     for _, guardInfo in ipairs(guardsToSpawn) do
@@ -209,8 +222,12 @@ function SpawnBankGuards(heistId)
 
         -- Store guard by index to prevent duplicates at same location
         BankGuards[heistId][guardIndex] = ped
-        debugPrint(('Bank guard spawned at location %d for heist: %s'):format(guardIndex, heistId))
+        debugPrint(('SpawnBankGuards: Guard spawned at location %d for heist %s (entity: %s)'):format(guardIndex, heistId, tostring(ped)))
     end
+    
+    -- Set spawn cooldown timestamp
+    GuardSpawnCooldown[heistId] = GetGameTimer()
+    debugPrint(('SpawnBankGuards: Spawn complete for heist %s, cooldown set'):format(heistId))
     
     -- Clear spawning lock
     GuardSpawning[heistId] = nil
@@ -290,30 +307,44 @@ end)
 
 local StoreClerks = {}
 local ClerkSpawning = {} -- [heistId] = true (prevents concurrent spawns)
+local ClerkSpawnCooldown = {} -- [heistId] = timestamp (prevents frequent respawns)
 
 function SpawnClerk(heistId)
     local heist = Config.Heists[heistId]
-    if not heist or not heist.clerk or not heist.clerk.enabled then return end
+    if not heist or not heist.clerk or not heist.clerk.enabled then 
+        debugPrint(('SpawnClerk: No clerk config for heist %s'):format(heistId))
+        return 
+    end
 
     -- Prevent concurrent spawns for the same heist
     if ClerkSpawning[heistId] then
-        debugPrint(('Clerk spawn already in progress for heist %s, skipping'):format(heistId))
+        debugPrint(('SpawnClerk: Spawn already in progress for heist %s, skipping'):format(heistId))
+        return
+    end
+    
+    -- SPAWN COOLDOWN: Check if we're in cooldown (30 seconds minimum)
+    local currentTime = GetGameTimer()
+    if ClerkSpawnCooldown[heistId] and (currentTime - ClerkSpawnCooldown[heistId]) < 30000 then
+        local remainingTime = math.ceil((30000 - (currentTime - ClerkSpawnCooldown[heistId])) / 1000)
+        debugPrint(('SpawnClerk: Cooldown active for heist %s (%d seconds remaining)'):format(heistId, remainingTime))
         return
     end
 
     -- Check if clerk already exists and is valid - don't respawn if it does
     local existingClerk = StoreClerks[heistId]
-    if existingClerk and DoesEntityExist(existingClerk) then
-        debugPrint(('Store clerk already exists for heist %s, skipping spawn'):format(heistId))
-        return -- Clerk already exists, don't respawn
+    if existingClerk and DoesEntityExist(existingClerk) and not IsEntityDead(existingClerk) then
+        debugPrint(('SpawnClerk: Clerk already exists and is alive for heist %s (entity: %s), skipping spawn'):format(heistId, tostring(existingClerk)))
+        return -- Clerk already exists and is alive, don't respawn
     end
 
     -- Mark as spawning to prevent concurrent attempts
     ClerkSpawning[heistId] = true
+    debugPrint(('SpawnClerk: Starting spawn for heist %s'):format(heistId))
 
     -- Cleanup invalid clerk reference if it exists
     if existingClerk then
         if DoesEntityExist(existingClerk) then
+            debugPrint(('SpawnClerk: Deleting existing invalid clerk for heist %s'):format(heistId))
             DeletePed(existingClerk)
         end
         StoreClerks[heistId] = nil
@@ -341,10 +372,12 @@ function SpawnClerk(heistId)
     StoreClerks[heistId] = ped
     SpawnedClerks[heistId] = ped -- Keep compatibility with existing code
     
+    -- Set spawn cooldown timestamp
+    ClerkSpawnCooldown[heistId] = GetGameTimer()
+    debugPrint(('SpawnClerk: Clerk spawned successfully for heist %s (entity: %s), cooldown set'):format(heistId, tostring(ped)))
+    
     -- Clear spawning lock
     ClerkSpawning[heistId] = nil
-    
-    debugPrint(('Store clerk spawned for heist: %s'):format(heistId))
 end
 
 -- Track intimidation progress to prevent interruption
@@ -1783,19 +1816,21 @@ local function SpawnAllHeistElements()
         if (heist.heistType == 'fleeca' or heist.heistType == 'bank') and heist.guards then
             -- CRITICAL FIX: Stronger check to prevent duplicate spawning
             if GuardSpawning[heistId] then
-                debugPrint(('Guard spawn in progress for heist %s, skipping SpawnAllHeistElements'):format(heistId))
+                debugPrint(('SpawnAllHeistElements: Guard spawn in progress for heist %s, skipping'):format(heistId))
                 goto continue_heist_loop
             end
             
-            -- FIX: Check each guard location individually
+            -- FIX: Check each guard location individually - only spawn if guards are missing
             local needsSpawn = false
             if not BankGuards[heistId] or not next(BankGuards[heistId]) then
+                debugPrint(('SpawnAllHeistElements: No guards tracked for heist %s, will spawn'):format(heistId))
                 needsSpawn = true
             else
-                -- Check if any guard location is missing
+                -- Check if any guard location is missing or invalid
                 for guardIndex = 1, #heist.guards do
                     local existingGuard = BankGuards[heistId][guardIndex]
-                    if not existingGuard or not DoesEntityExist(existingGuard) then
+                    if not existingGuard or not DoesEntityExist(existingGuard) or IsEntityDead(existingGuard) then
+                        debugPrint(('SpawnAllHeistElements: Guard missing/invalid at location %d for heist %s, will spawn'):format(guardIndex, heistId))
                         needsSpawn = true
                         break
                     end
@@ -1803,16 +1838,21 @@ local function SpawnAllHeistElements()
             end
             if needsSpawn then
                 SpawnBankGuards(heistId)
+            else
+                debugPrint(('SpawnAllHeistElements: All guards exist for heist %s, skipping spawn'):format(heistId))
             end
         end
         ::continue_heist_loop::
         
         -- Spawn clerks for store heists - only if they don't exist
         if heist.heistType == 'store' and heist.clerk and heist.clerk.enabled then
-            -- Robust check: verify clerk doesn't exist before spawning
+            -- Robust check: verify clerk doesn't exist or is dead before spawning
             local existingClerk = StoreClerks[heistId]
-            if not existingClerk or not DoesEntityExist(existingClerk) then
+            if not existingClerk or not DoesEntityExist(existingClerk) or IsEntityDead(existingClerk) then
+                debugPrint(('SpawnAllHeistElements: Clerk missing/dead for heist %s, will spawn'):format(heistId))
                 SpawnClerk(heistId)
+            else
+                debugPrint(('SpawnAllHeistElements: Clerk exists for heist %s (entity: %s), skipping spawn'):format(heistId, tostring(existingClerk)))
             end
         end
         
@@ -1911,28 +1951,34 @@ RegisterNetEvent('cs_heistmaster:client:cleanupHeist', function(heistId)
     end
     
     -- FIX: Cleanup bank guards on heist end/abort to prevent duplicates
+    -- NOTE: Guards should persist after heist ends (they're part of the bank, not the heist)
+    -- Only cleanup if explicitly needed (e.g., heist abort or resource restart)
     if BankGuards[heistId] then
+        debugPrint(('cleanupHeist: Cleaning up bank guards for heist %s'):format(heistId))
         for guardIndex, ped in pairs(BankGuards[heistId]) do
             if DoesEntityExist(ped) then
                 DeletePed(ped)
-                debugPrint(('Bank guard %d deleted during cleanup for heist: %s'):format(guardIndex, heistId))
+                debugPrint(('cleanupHeist: Bank guard %d deleted for heist: %s'):format(guardIndex, heistId))
             end
         end
         BankGuards[heistId] = nil
         GuardSpawning[heistId] = nil -- Clear spawn lock
+        GuardSpawnCooldown[heistId] = nil -- Clear cooldown
     end
     
     -- Cleanup clerk (will respawn after cooldown)
+    -- NOTE: Clerk should only be deleted if heist ends/aborts, not during normal gameplay
     local clerkPed = StoreClerks[heistId] or SpawnedClerks[heistId]
     if clerkPed and DoesEntityExist(clerkPed) then
+        debugPrint(('cleanupHeist: Deleting clerk for heist %s (entity: %s)'):format(heistId, tostring(clerkPed)))
         DeletePed(clerkPed)
-        debugPrint(('Clerk deleted during cleanup for heist: %s'):format(heistId))
     end
     
     -- Clear all clerk references
     StoreClerks[heistId] = nil
     SpawnedClerks[heistId] = nil
     ClerkSpawning[heistId] = nil -- Clear spawn lock
+    ClerkSpawnCooldown[heistId] = nil -- Clear cooldown (will be set again on respawn)
     
     -- CRITICAL FIX: Cleanup vault door - reset it to closed state instead of deleting
     -- Vault doors should persist but be reset to closed state after heist ends
@@ -2038,11 +2084,16 @@ RegisterNetEvent('cs_heistmaster:client:cleanupHeist', function(heistId)
                 -- Check if heist is still in cooldown before respawning
                 local state = HeistClientState[heistId] or "idle"
                 if state == "cooldown" or state == "idle" then
-                    -- Only respawn if clerk doesn't exist
-                    if not StoreClerks[heistId] or not DoesEntityExist(StoreClerks[heistId]) then
+                    -- Only respawn if clerk doesn't exist or is dead
+                    local existingClerk = StoreClerks[heistId]
+                    if not existingClerk or not DoesEntityExist(existingClerk) or IsEntityDead(existingClerk) then
+                        debugPrint(('cleanupHeist: Respawning clerk after cooldown for heist %s'):format(heistId))
                         SpawnClerk(heistId)
-                        debugPrint(('Clerk respawned after cooldown: %s'):format(heistId))
+                    else
+                        debugPrint(('cleanupHeist: Clerk still exists for heist %s, skipping respawn'):format(heistId))
                     end
+                else
+                    debugPrint(('cleanupHeist: Heist %s not in cooldown/idle state (%s), skipping clerk respawn'):format(heistId, state))
                 end
             end)
         end

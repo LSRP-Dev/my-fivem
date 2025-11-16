@@ -168,12 +168,13 @@ end
 -- Helper to get players within radius of coordinates
 local function getPlayersInRadius(coords, radius)
     local nearbyPlayers = {}
-    local players = GetActivePlayers()
+    -- Get all players (server-side: GetPlayers returns source IDs as strings/numbers)
+    local players = GetPlayers()
     
-    for _, playerId in ipairs(players) do
-        local playerSrc = GetPlayerServerId(playerId)
+    for _, playerSrcRaw in ipairs(players) do
+        local playerSrc = tonumber(playerSrcRaw)
         if playerSrc and playerSrc > 0 then
-            local ped = GetPlayerPed(playerId)
+            local ped = GetPlayerPed(playerSrc)
             if ped and ped ~= 0 then
                 local playerCoords = GetEntityCoords(ped)
                 local distance = #(coords - playerCoords)

@@ -727,18 +727,51 @@ local function handleSmashAction(heistId, heist, step, stepIndex)
         return false
     end
     
-    -- For store heists, require crowbar in inventory
+    -- For store heists, require crowbar in inventory or equipped
     if heist.heistType == 'store' then
         local hasCrowbarItem = false
         
-        if exports['ox_inventory'] then
-            local searchResult = exports['ox_inventory']:Search('count', 'crowbar')
-            if type(searchResult) == 'number' then
-                hasCrowbarItem = searchResult > 0
-            elseif type(searchResult) == 'table' then
-                if searchResult['crowbar'] then
-                    hasCrowbarItem = searchResult['crowbar'] > 0
+        -- First check if player has crowbar weapon equipped (in hand)
+        if HasPedGotWeapon(ped, joaat('WEAPON_CROWBAR'), false) then
+            hasCrowbarItem = true
+            debugPrint('Crowbar check: Found equipped weapon')
+        else
+            -- Check inventory systems
+            if exports['ox_inventory'] then
+                -- ox_inventory - try multiple methods
+                local searchResult = exports['ox_inventory']:Search('count', 'crowbar')
+                if searchResult then
+                    if type(searchResult) == 'number' then
+                        hasCrowbarItem = searchResult > 0
+                    elseif type(searchResult) == 'table' then
+                        if searchResult['crowbar'] then
+                            hasCrowbarItem = searchResult['crowbar'] > 0
+                        end
+                    end
                 end
+                
+                -- Fallback: try GetItemCount
+                if not hasCrowbarItem then
+                    local count = exports['ox_inventory']:GetItemCount('crowbar')
+                    hasCrowbarItem = count and count > 0 or false
+                end
+                
+                debugPrint(('Crowbar check (ox_inventory): %s'):format(tostring(hasCrowbarItem)))
+            elseif exports['qb-core'] then
+                -- QBCore inventory
+                local QBCore = exports['qb-core']:GetCoreObject()
+                if QBCore and QBCore.Functions then
+                    local hasItem = QBCore.Functions.HasItem('crowbar')
+                    hasCrowbarItem = hasItem or false
+                    debugPrint(('Crowbar check (qb-core): %s'):format(tostring(hasCrowbarItem)))
+                end
+            elseif exports['qbx_core'] then
+                -- QBX inventory
+                local hasItem = exports.qbx_core:HasItem('crowbar')
+                hasCrowbarItem = hasItem or false
+                debugPrint(('Crowbar check (qbx_core): %s'):format(tostring(hasCrowbarItem)))
+            else
+                debugPrint('Crowbar check: No inventory system detected')
             end
         end
         

@@ -14,6 +14,18 @@ local FleecaVaultState = FleecaVaultState or {} -- [heistId] = { spawned = false
 -- PROMPT C: Loot tracking
 local HeistLootServerState = {} -- [heistId] = { [lootKey] = true }
 
+-- PATCH C: Step progression tracking
+local HeistStepState = {} -- [heistId] = currentStep
+
+local function GetStep(heistId)
+    return HeistStepState[heistId] or 1
+end
+
+local function AdvanceStep(heistId)
+    HeistStepState[heistId] = GetStep(heistId) + 1
+    TriggerClientEvent("cs_heistmaster:client:setStep", -1, heistId, HeistStepState[heistId])
+end
+
 local function debugPrint(...)
     if Config.Debug then
         print('[cs_heistmaster:server]', ...)
@@ -202,6 +214,10 @@ RegisterNetEvent('cs_heistmaster:requestStart', function(heistId)
 
     -- PROMPT C: Initialize loot tracking
     HeistLootServerState[heistId] = {}
+    
+    -- PATCH C: Initialize step state
+    HeistStepState[heistId] = 1
+    TriggerClientEvent("cs_heistmaster:client:setStep", -1, heistId, 1)
 
     debugPrint(('Heist %s started by %s'):format(heistId, src))
 
@@ -258,6 +274,7 @@ RegisterNetEvent('cs_heistmaster:finishHeist', function(heistId)
     -- PROMPT C: Clear loot tracking after cooldown
     SetTimeout((heist.cooldown or 0) * 1000, function()
         HeistLootServerState[heistId] = nil
+        HeistStepState[heistId] = nil
         -- Reset to idle after cooldown
         setHeistState(heistId, "idle")
     end)
@@ -285,6 +302,7 @@ RegisterNetEvent('cs_heistmaster:abortHeist', function(heistId)
     
     -- PROMPT C: Clear loot tracking
     HeistLootServerState[heistId] = nil
+    HeistStepState[heistId] = nil
     
     debugPrint(('Heist %s aborted by %s'):format(heistId, src))
     TriggerClientEvent('cs_heistmaster:client:cleanupHeist', -1, heistId)
@@ -475,6 +493,16 @@ AddEventHandler('qbx_core:server:playerLoaded', function()
     local src = source
     Wait(2000) -- Wait a bit for everything to load
     TriggerClientEvent('cs_heistmaster:client:requestVaultSync', src)
+end)
+
+-- PATCH C: Step completion handler
+RegisterNetEvent("cs_heistmaster:server:completeStep", function(heistId, step)
+    local src = source
+    if step ~= GetStep(heistId) then 
+        debugPrint(('Step mismatch: expected %s, got %s for heist %s'):format(GetStep(heistId), step, heistId))
+        return 
+    end
+    AdvanceStep(heistId)
 end)
 
 -- PROMPT C: Server-side loot reward handler

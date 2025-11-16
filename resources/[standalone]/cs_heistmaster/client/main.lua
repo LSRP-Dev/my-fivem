@@ -1,128 +1,31 @@
 local Config = Config
 local Heists = Config.Heists
 
-local currentHeistId = currentHeistId or nil
-local currentStepIndex = 0
-local guards = {}  -- [heistId] = { ped, ... }
-local SpawnedClerks = {}  -- [heistId] = ped
-local VaultDoors = VaultDoors or {} -- [heistId] = door entity
+-- ============================================================
+-- STATE TRACKING
+-- ============================================================
 
--- Centralized heist state tracking
-local HeistClientState = HeistClientState or {} -- [heistId] = "idle" | "active" | "cooldown"
-local ClerkRuntimeState = ClerkRuntimeState or {} -- [heistId] = { panicked = false, gaveKey = false }
-local HeistLootedSteps = {} -- [heistId] = { [stepIndex] = true }
+local currentHeistId = nil
+local currentStepIndex = 0
+local HeistClientState = {} -- [heistId] = "idle" | "active" | "cooldown"
+local ActiveStep = {} -- [heistId] = stepNumber
+local alreadyLooted = {} -- [heistId] = { [lootKey] = true }
+local ClerkRuntimeState = {} -- [heistId] = { panicked = false, gaveKey = false, aggroTimer = 0 }
+
+-- Entity tracking
+local guards = {} -- [heistId] = { ped1, ped2, ... }
+local SpawnedClerks = {} -- [heistId] = ped
+local VaultDoors = {} -- [heistId] = { obj = entity, heading = number, open = boolean }
+
+-- ============================================================
+-- HELPERS
+-- ============================================================
 
 local function debugPrint(...)
     if Config.Debug then
         print('[cs_heistmaster:client]', ...)
     end
 end
-
--- Server can set heist state
-RegisterNetEvent('cs_heistmaster:client:setHeistState', function(heistId, state)
-    HeistClientState[heistId] = state
-
-    if state == "active" then
-        currentHeistId = heistId
-    elseif state ~= "active" and currentHeistId == heistId then
-        currentHeistId = nil
-    end
-
-    debugPrint(('Heist state set: %s = %s'):format(heistId, state))
-end)
-
-------------------------------------------------------
--- Vault Door System (PROMPT B)
-------------------------------------------------------
-
--- Helper to delete default vault doors
-local function deleteDefaultVaultDoor(coords)
-    local model = `v_ilev_bk_vaultdoor`
-    local obj = GetClosestObjectOfType(coords.x, coords.y, coords.z, 3.0, model, false, false, false)
-    if obj ~= 0 then
-        DeleteEntity(obj)
-    end
-
-    -- also attempt to delete other possible vault models if present
-    local model2 = `v_ilev_gb_vauldr`
-    local obj2 = GetClosestObjectOfType(coords.x, coords.y, coords.z, 3.0, model2, false, false, false)
-    if obj2 ~= 0 then
-        DeleteEntity(obj2)
-    end
-end
-
--- Spawn custom vault door with state support
-RegisterNetEvent('cs_heistmaster:client:spawnVaultDoor', function(heistId, coordsTable, heading, modelName, isOpen)
-    local coords = vector3(coordsTable.x, coordsTable.y, coordsTable.z)
-    deleteDefaultVaultDoor(coords)
-
-    if VaultDoors[heistId] and DoesEntityExist(VaultDoors[heistId]) then
-        DeleteEntity(VaultDoors[heistId])
-        VaultDoors[heistId] = nil
-    end
-
-    local model = joaat(modelName or 'v_ilev_gb_vauldr')
-    RequestModel(model)
-    while not HasModelLoaded(model) do Wait(0) end
-
-    local door = CreateObject(model, coords.x, coords.y, coords.z, true, true, false)
-    SetEntityHeading(door, heading or 160.0)
-    FreezeEntityPosition(door, true)
-    VaultDoors[heistId] = door
-
-    if isOpen then
-        -- immediately put door in open state
-        local openHeading = (heading or 160.0) - 110.0
-        SetEntityHeading(door, openHeading)
-    end
-
-    debugPrint(('Spawned vault door for heist: %s (open: %s)'):format(heistId, tostring(isOpen)))
-end)
-
--- Smooth open animation
-local function animateVaultDoorOpen(heistId)
-    local door = VaultDoors[heistId]
-    if not door or not DoesEntityExist(door) then return end
-
-    local startHeading = GetEntityHeading(door)
-    local endHeading = startHeading - 110.0
-
-    FreezeEntityPosition(door, false)
-
-    for i = 0, 100 do
-        local t = i / 100.0
-        local eased = t < 0.5 and 2.0 * t * t or -1.0 + (4.0 - 2.0 * t) * t
-        local heading = startHeading + (endHeading - startHeading) * eased
-        SetEntityHeading(door, heading)
-
-        if i == 0 then
-            local dCoords = GetEntityCoords(door)
-            UseParticleFxAssetNextCall("core")
-            StartParticleFxNonLoopedAtCoord("ent_dst_electrical", dCoords.x, dCoords.y, dCoords.z, 0.0, 0.0, 0.0, 1.0, false, false, false)
-            PlaySoundFromCoord(-1, "VAULT_DOOR_OPEN", dCoords.x, dCoords.y, dCoords.z, "dlc_heist_fleeca_bank_door_sounds", false, 1.0, false)
-            ShakeGameplayCam("SMALL_EXPLOSION_SHAKE", 0.5)
-        end
-
-        Wait(15)
-    end
-
-    FreezeEntityPosition(door, true)
-    debugPrint(('Vault door opened for heist: %s'):format(heistId))
-end
-
-RegisterNetEvent('cs_heistmaster:client:openVaultDoor', function(heistId)
-    animateVaultDoorOpen(heistId)
-end)
-
--- Sync on player load
-CreateThread(function()
-    Wait(5000)
-    TriggerServerEvent('cs_heistmaster:server:syncVaultDoors')
-end)
-
-------------------------------------------------------
--- Helpers
-------------------------------------------------------
 
 local function vecFromTable(t, defaultW)
     if not t then return vec3(0.0, 0.0, 0.0) end
@@ -140,21 +43,137 @@ local function loadModel(model)
     return hash
 end
 
-------------------------------------------------------
--- Guards
-------------------------------------------------------
+-- ============================================================
+-- H) SYNCHRONIZATION - Server Events
+-- ============================================================
+
+RegisterNetEvent('cs_heistmaster:client:setHeistState', function(heistId, state)
+    HeistClientState[heistId] = state
+    if state == "active" then
+        currentHeistId = heistId
+    elseif state ~= "active" and currentHeistId == heistId then
+        currentHeistId = nil
+    end
+    debugPrint(('Heist state set: %s = %s'):format(heistId, state))
+end)
+
+RegisterNetEvent("cs_heistmaster:client:setStep", function(heistId, step)
+    ActiveStep[heistId] = step
+    debugPrint(('Step set: %s = %s'):format(heistId, step))
+end)
+
+-- Forward declaration - will be defined later
+local runHeistThread
+
+RegisterNetEvent('cs_heistmaster:client:startHeist', function(heistId, heistData)
+    currentHeistId = heistId
+    currentStepIndex = 1
+    Heists[heistId] = heistData
+    HeistClientState[heistId] = "active"
+    ActiveStep[heistId] = 1
+    alreadyLooted[heistId] = {}
+    
+    debugPrint('Heist started:', heistId)
+    
+    lib.notify({
+        title = heistData.label,
+        description = 'Heist started. Follow the objectives.',
+        type = 'success'
+    })
+    
+    -- Start the heist thread
+    runHeistThread(heistId, heistData)
+end)
+
+RegisterNetEvent('cs_heistmaster:client:forceStart', function(heistId)
+    TriggerServerEvent('cs_heistmaster:requestStart', heistId)
+end)
+
+-- ============================================================
+-- B) VAULT DOOR SYSTEM
+-- ============================================================
+
+RegisterNetEvent("cs_heistmaster:client:spawnVaultDoor", function(heistId, coords, heading, model, open)
+    -- Delete existing door if present
+    if VaultDoors[heistId] and DoesEntityExist(VaultDoors[heistId].obj) then
+        DeleteEntity(VaultDoors[heistId].obj)
+    end
+    
+    local hash = joaat(model or 'v_ilev_gb_vauldr')
+    RequestModel(hash)
+    while not HasModelLoaded(hash) do Wait(10) end
+    
+    local obj = CreateObject(hash, coords.x, coords.y, coords.z, false, false, false)
+    SetEntityHeading(obj, heading or 160.0)
+    FreezeEntityPosition(obj, true)
+    
+    VaultDoors[heistId] = { obj = obj, heading = heading or 160.0, open = open or false }
+    
+    if open then
+        SetEntityHeading(obj, (heading or 160.0) - 100.0)
+    end
+    
+    debugPrint(('Vault door spawned: %s (open: %s)'):format(heistId, tostring(open)))
+end)
+
+RegisterNetEvent("cs_heistmaster:client:openVaultDoor", function(heistId)
+    local door = VaultDoors[heistId]
+    if not door or not DoesEntityExist(door.obj) then return end
+    
+    local start = door.heading
+    FreezeEntityPosition(door.obj, false)
+    
+    for i = 1, 100 do
+        SetEntityHeading(door.obj, start - (i * 1.0))
+        Wait(15)
+    end
+    
+    FreezeEntityPosition(door.obj, true)
+    door.open = true
+    
+    -- Effects
+    local coords = GetEntityCoords(door.obj)
+    UseParticleFxAssetNextCall("core")
+    StartParticleFxNonLoopedAtCoord("ent_dst_electrical", coords.x, coords.y, coords.z, 0.0, 0.0, 0.0, 1.0, false, false, false)
+    PlaySoundFromCoord(-1, "VAULT_DOOR_OPEN", coords.x, coords.y, coords.z, "dlc_heist_fleeca_bank_door_sounds", false, 1.0, false)
+    ShakeGameplayCam("SMALL_EXPLOSION_SHAKE", 0.5)
+    
+    debugPrint(('Vault door opened: %s'):format(heistId))
+end)
+
+RegisterNetEvent("cs_heistmaster:client:requestVaultSync", function()
+    TriggerServerEvent("cs_heistmaster:server:syncVaultDoors")
+end)
+
+-- Sync on join
+CreateThread(function()
+    Wait(5000)
+    TriggerServerEvent("cs_heistmaster:server:syncVaultDoors")
+end)
+
+-- ============================================================
+-- D) GUARDS SYSTEM
+-- ============================================================
 
 RegisterNetEvent('cs_heistmaster:client:spawnGuards', function(heistId, guardList)
     if not guardList or #guardList == 0 then return end
-    guards[heistId] = guards[heistId] or {}
-
+    
+    -- Cleanup existing guards for this heist
+    if guards[heistId] then
+        for _, ped in ipairs(guards[heistId]) do
+            if DoesEntityExist(ped) then DeletePed(ped) end
+        end
+    end
+    
+    guards[heistId] = {}
+    
     for _, data in ipairs(guardList) do
         if data.coords then
             local c = vecFromTable(data.coords, data.coords.w or 0.0)
             local mHash = loadModel(data.model or 's_m_m_security_01')
             if mHash then
                 local ped = CreatePed(4, mHash, c.x, c.y, c.z, c.w, true, true)
-
+                
                 SetEntityAsMissionEntity(ped, true, true)
                 SetPedArmour(ped, data.armor or 50)
                 SetPedAccuracy(ped, data.accuracy or 30)
@@ -162,24 +181,38 @@ RegisterNetEvent('cs_heistmaster:client:spawnGuards', function(heistId, guardLis
                 SetPedCombatAttributes(ped, 46, true)
                 SetPedCombatRange(ped, 2)
                 SetPedCombatMovement(ped, 2)
-
+                SetPedRelationshipGroupHash(ped, joaat('GUARD'))
+                SetRelationshipBetweenGroups(5, joaat('GUARD'), joaat('PLAYER'))
+                SetRelationshipBetweenGroups(5, joaat('PLAYER'), joaat('GUARD'))
+                
                 GiveWeaponToPed(ped, joaat(data.weapon or 'weapon_pistol'), 250, false, true)
-
+                SetPedCombatAbility(ped, 100)
+                SetPedCombatAttributes(ped, 46, true)
+                
+                -- Make guards attack player on sight
+                TaskCombatPed(ped, PlayerPedId(), 0, 16)
+                
                 table.insert(guards[heistId], ped)
+                debugPrint(('Guard spawned for heist: %s'):format(heistId))
             end
         end
     end
 end)
 
+-- ============================================================
+-- CLEANUP
+-- ============================================================
+
 RegisterNetEvent('cs_heistmaster:client:cleanupHeist', function(heistId)
+    -- Cleanup guards
     if guards[heistId] then
         for _, ped in ipairs(guards[heistId]) do
             if DoesEntityExist(ped) then DeletePed(ped) end
         end
         guards[heistId] = nil
     end
-
-    -- Cleanup clerk if exists
+    
+    -- Cleanup clerk
     if SpawnedClerks[heistId] then
         local clerkPed = SpawnedClerks[heistId]
         if DoesEntityExist(clerkPed) then
@@ -187,60 +220,95 @@ RegisterNetEvent('cs_heistmaster:client:cleanupHeist', function(heistId)
         end
         SpawnedClerks[heistId] = nil
     end
-
-    -- Cleanup vault door if exists
+    
+    -- Cleanup vault door
     if VaultDoors[heistId] then
         local door = VaultDoors[heistId]
-        if DoesEntityExist(door) then
-            DeleteEntity(door)
+        if DoesEntityExist(door.obj) then
+            DeleteEntity(door.obj)
         end
         VaultDoors[heistId] = nil
     end
-
-    -- Reset clerk runtime state
+    
+    -- Reset state
     ClerkRuntimeState[heistId] = nil
-    HeistLootedSteps[heistId] = nil
-
+    alreadyLooted[heistId] = nil
+    
     if currentHeistId == heistId then
         currentHeistId = nil
         currentStepIndex = 0
         lib.hideTextUI()
     end
+    
+    debugPrint(('Heist cleaned up: %s'):format(heistId))
 end)
 
-------------------------------------------------------
--- Alert and alarm handler
-------------------------------------------------------
+-- ============================================================
+-- ALERT & ALARM HANDLER
+-- ============================================================
 
 local function handleStepAlert(heistId, heist, step)
     local alertType = step.alert or 'none'
     if alertType ~= 'none' then
         TriggerServerEvent('cs_heistmaster:alertPolice', heistId, alertType)
     end
-
+    
     if step.alarmSound then
-        -- simple world alarm: you can replace with your own sound system
-        -- This just plays a local siren for now
         PlaySoundFrontend(-1, 'Bed', 'WastedSounds', true)
+        -- You can add more alarm sounds here
     end
 end
 
-------------------------------------------------------
--- Step runner
-------------------------------------------------------
+-- ============================================================
+-- C) STEP PROGRESSION & ACTIONS
+-- ============================================================
 
 local function runHeistThread(heistId, heist)
     CreateThread(function()
+        local heistStartPos = vecFromTable(heist.start)
+        local maxDistance = 80.0 -- Abort if player goes too far
+        local heistRadius = 50.0 -- Abort if player leaves heist radius
+        
         while currentHeistId == heistId do
-            local step = heist.steps[currentStepIndex]
-            if not step then break end
-
-            local stepPos = vecFromTable(step.coords)
             local ped = PlayerPedId()
+            if not ped or ped == 0 then
+                -- F) Player logged out
+                TriggerServerEvent('cs_heistmaster:abortHeist', heistId)
+                break
+            end
+            
             local pCoords = GetEntityCoords(ped)
+            
+            -- F) ABORT CONDITIONS
+            if IsEntityDead(ped) then
+                TriggerServerEvent('cs_heistmaster:abortHeist', heistId)
+                break
+            end
+            
+            local distFromStart = #(pCoords - heistStartPos)
+            if distFromStart > maxDistance then
+                lib.notify({
+                    description = 'You left the heist area!',
+                    type = 'error'
+                })
+                TriggerServerEvent('cs_heistmaster:abortHeist', heistId)
+                break
+            end
+            
+            -- Get current step
+            local stepIndex = ActiveStep[heistId] or 1
+            local step = heist.steps[stepIndex]
+            
+            if not step then
+                -- No more steps, check for escape
+                break
+            end
+            
+            currentStepIndex = stepIndex
+            local stepPos = vecFromTable(step.coords)
             local dist = #(pCoords - stepPos)
-
-            -- draw marker when near
+            
+            -- Draw marker when near
             if dist < 25.0 then
                 DrawMarker(
                     1,
@@ -252,200 +320,236 @@ local function runHeistThread(heistId, heist)
                     false, true, 2, false, nil, nil, false
                 )
             end
-
+            
             if dist < (step.radius or 1.5) then
+                -- C) Check if this is the active step
+                if ActiveStep[heistId] ~= stepIndex then
+                    lib.hideTextUI()
+                    goto continue_step_loop
+                end
+                
                 lib.showTextUI(('[E] %s'):format(step.label or 'Do step'))
-
+                
                 if IsControlJustPressed(0, 38) then
                     lib.hideTextUI()
-                    local success = true
-
-                    --------------------------------------------------
-                    -- ACTION BEHAVIOUR
-                    --------------------------------------------------
-                    -- NEW: trigger alert/alarm once we start the step
+                    
+                    -- Trigger alert/alarm
                     handleStepAlert(heistId, heist, step)
-
+                    
+                    local success = false
+                    local lootKey = ('step_%s'):format(stepIndex)
+                    
+                    -- E) Check if already looted
+                    if alreadyLooted[heistId] and alreadyLooted[heistId][lootKey] then
+                        lib.notify({
+                            description = 'This has already been completed.',
+                            type = 'error'
+                        })
+                        goto continue_step_loop
+                    end
+                    
+                    -- Handle different action types
                     if step.action == 'hack' then
                         RequestAnimDict('anim@heists@prison_heiststation@cop_reactions')
                         while not HasAnimDictLoaded('anim@heists@prison_heiststation@cop_reactions') do Wait(0) end
-
+                        
                         TaskPlayAnim(ped, 'anim@heists@prison_heiststation@cop_reactions', 'console_peek_a', 8.0, -8.0, -1, 1, 0.0, false, false, false)
-
-                        -- Mini game removed - auto success
-                        local hackDuration = step.time or 5000
-                        lib.progressCircle({
-                            duration = hackDuration,
-                            label = step.label or 'Hacking...',
-                            position = 'bottom',
-                            useWhileDead = false,
-                            canCancel = false,
-                            disable = { move = true, car = true, combat = true },
-                        })
-                        success = true
+                        
+                        -- Skill check
+                        local difficulty = step.difficulty or { 'easy', 'medium', 'hard' }
+                        local inputs = step.inputs or nil
+                        local result = lib.skillCheck(difficulty, inputs)
+                        
+                        if result then
+                            local hackDuration = step.time or 5000
+                            local progressResult = lib.progressCircle({
+                                duration = hackDuration,
+                                label = step.label or 'Hacking...',
+                                position = 'bottom',
+                                useWhileDead = false,
+                                canCancel = true,
+                                disable = { move = true, car = true, combat = true },
+                            })
+                            
+                            if not progressResult then
+                                -- F) Player cancelled
+                                TriggerServerEvent('cs_heistmaster:abortHeist', heistId)
+                                currentHeistId = nil
+                                break
+                            end
+                            
+                            success = true
+                        else
+                            lib.notify({
+                                description = 'Hack failed!',
+                                type = 'error'
+                            })
+                            success = false
+                        end
                         ClearPedTasks(ped)
-
+                        
                     elseif step.action == 'drill' then
-                        -- DO THEY HAVE THE KEY?
+                        -- Check for safe key
                         local keyName = "safe_key_"..heistId
                         local hasKey = false
                         
                         if exports['ox_inventory'] then
-                            -- Client-side Search: Search(search, item) - no source needed
                             local searchResult = exports['ox_inventory']:Search('count', keyName)
-                            
-                            if Config.Debug then
-                                debugPrint(('Key search result type: %s, value: %s'):format(
-                                    type(searchResult), tostring(searchResult)
-                                ))
-                            end
-                            
-                            -- Search can return number or table, handle both
                             if type(searchResult) == 'number' then
                                 hasKey = searchResult > 0
                             elseif type(searchResult) == 'table' then
-                                -- Could be { [itemName] = count } or just the count directly
                                 if searchResult[keyName] then
                                     hasKey = searchResult[keyName] > 0
-                                elseif searchResult[1] then
-                                    hasKey = searchResult[1] > 0
                                 end
                             end
                         end
-
-                        if Config.Debug then
-                            debugPrint(('Drill step: checking for key %s, hasKey=%s'):format(keyName, tostring(hasKey)))
-                        end
-
+                        
                         if hasKey then
-                            -- USE KEY INSTEAD OF DRILL/LOCKPICK/THERMITE
-                            lib.progressCircle({
+                            local progressResult = lib.progressCircle({
                                 duration = 3500,
                                 label = "Unlocking safe with key...",
                                 position = 'bottom',
                                 disable = { move = true, car = true, combat = true },
-                                canCancel = false
+                                canCancel = true
                             })
-
-                            -- silent open (no cop alert)
+                            
+                            if not progressResult then
+                                TriggerServerEvent('cs_heistmaster:abortHeist', heistId)
+                                currentHeistId = nil
+                                break
+                            end
+                            
                             TriggerServerEvent('cs_heistmaster:safeReward', heistId)
-                            lib.notify({ 
-                                title = 'Safe', 
-                                description = 'You unlocked the safe silently!', 
-                                type = 'success' 
-                            })
-
-                            -- remove key (server will handle removal)
                             TriggerServerEvent('cs_heistmaster:removeSafeKey', heistId)
-
+                            lib.notify({
+                                title = 'Safe',
+                                description = 'You unlocked the safe silently!',
+                                type = 'success'
+                            })
                             success = true
                         else
-                            -- Normal drilling (loud)
-                            local duration = (step.time or 20000)
+                            local duration = step.time or 20000
                             RequestAnimDict('anim@heists@fleeca_bank@drilling')
                             while not HasAnimDictLoaded('anim@heists@fleeca_bank@drilling') do Wait(0) end
-
+                            
                             TaskPlayAnim(ped, 'anim@heists@fleeca_bank@drilling', 'drill_straight_idle', 8.0, -8.0, duration, 1, 0.0, false, false, false)
-
-                            lib.progressCircle({
+                            
+                            local progressResult = lib.progressCircle({
                                 duration = duration,
                                 label = step.label or 'Drilling...',
                                 position = 'bottom',
                                 useWhileDead = false,
-                                canCancel = false,
+                                canCancel = true,
                                 disable = { move = true, car = true, combat = true },
                             })
-
+                            
                             ClearPedTasks(ped)
                             
-                            -- Open vault door after drilling completes (for Fleeca banks)
+                            if not progressResult then
+                                TriggerServerEvent('cs_heistmaster:abortHeist', heistId)
+                                currentHeistId = nil
+                                break
+                            end
+                            
+                            -- Open vault door for Fleeca
                             if heist.heistType == 'fleeca' and heist.vault then
                                 TriggerServerEvent('cs_heistmaster:server:setVaultOpen', heistId)
                             end
                             
                             success = true
                         end
-
+                        
                     elseif step.action == 'smash' then
                         RequestAnimDict('melee@unarmed@streamed_core_fps')
                         while not HasAnimDictLoaded('melee@unarmed@streamed_core_fps') do Wait(0) end
-
+                        
                         TaskPlayAnim(ped, 'melee@unarmed@streamed_core_fps', 'ground_attack_0', 8.0, -8.0, step.time or 4000, 0, 0.0, false, false, false)
-
-                        lib.progressCircle({
+                        
+                        local progressResult = lib.progressCircle({
                             duration = step.time or 4000,
                             label = step.label or 'Smashing...',
                             position = 'bottom',
                             useWhileDead = false,
-                            canCancel = false,
+                            canCancel = true,
                             disable = { move = true, car = true, combat = true },
                         })
-
+                        
                         ClearPedTasks(ped)
-
-                    elseif step.action == 'loot' then
-                        -- PROMPT C: Check if already looted
-                        local lootedSteps = HeistLootedSteps[heistId] or {}
-                        if lootedSteps[currentStepIndex] then
-                            -- Already looted, skip
-                            lib.notify({
-                                description = 'This has already been looted.',
-                                type = 'error'
-                            })
-                            success = false
-                            goto skip_loot
+                        
+                        if not progressResult then
+                            TriggerServerEvent('cs_heistmaster:abortHeist', heistId)
+                            currentHeistId = nil
+                            break
                         end
-
+                        
+                        success = true
+                        
+                    elseif step.action == 'loot' then
                         RequestAnimDict('anim@heists@ornate_bank@grab_cash')
                         while not HasAnimDictLoaded('anim@heists@ornate_bank@grab_cash') do Wait(0) end
-
+                        
                         TaskPlayAnim(ped, 'anim@heists@ornate_bank@grab_cash', 'grab', 8.0, -8.0, -1, 1, 0.0, false, false, false)
-
-                        -- Mini game removed - auto success
+                        
                         local lootDuration = step.time or 3000
-                        lib.progressCircle({
+                        local progressResult = lib.progressCircle({
                             duration = lootDuration,
                             label = step.label or 'Looting...',
                             position = 'bottom',
                             useWhileDead = false,
-                            canCancel = false,
+                            canCancel = true,
                             disable = { move = true, car = true, combat = true },
                         })
                         
-                        -- PROMPT C: Mark as looted and request reward
-                        local lootKey = ('step_%s'):format(currentStepIndex)
+                        ClearPedTasks(ped)
+                        
+                        if not progressResult then
+                            TriggerServerEvent('cs_heistmaster:abortHeist', heistId)
+                            currentHeistId = nil
+                            break
+                        end
+                        
+                        -- E) Mark as looted and request reward
+                        alreadyLooted[heistId] = alreadyLooted[heistId] or {}
+                        alreadyLooted[heistId][lootKey] = true
                         TriggerServerEvent('cs_heistmaster:server:giveLoot', heistId, lootKey)
-                        HeistLootedSteps[heistId] = HeistLootedSteps[heistId] or {}
-                        HeistLootedSteps[heistId][currentStepIndex] = true
                         
                         success = true
-                        ClearPedTasks(ped)
-                        ::skip_loot::
-
+                        
                     elseif step.action == 'escape' then
-                        -- must get away from the start point
-                        local centerPos = vecFromTable(heist.start)
-                        local escapeRadius = step.radius or 120.0
-                        local distFromStart = #(pCoords - centerPos)
-                        if distFromStart < escapeRadius then
-                            success = false
+                        -- G) ESCAPE STEP
+                        local escapePos = vecFromTable(step.coords)
+                        local distFromEscape = #(pCoords - escapePos)
+                        local escapeRadius = step.radius or 5.0
+                        
+                        -- Check if player is within escape radius
+                        if distFromEscape <= escapeRadius then
+                            -- Player is at escape point, finish heist
+                            success = true
+                        else
                             lib.notify({
-                                description = 'You need to get further away from the area!',
+                                description = 'You need to reach the escape point!',
                                 type = 'error'
                             })
+                            success = false
                         end
                     end
-
-                    --------------------------------------------------
-                    -- HANDLE SUCCESS / FAIL
-                    --------------------------------------------------
+                    
+                    -- Handle step completion
                     if success then
-                        currentStepIndex = currentStepIndex + 1
-                        local nextStep = heist.steps[currentStepIndex]
-
+                        -- E) Mark step as completed (if not already marked for loot)
+                        if step.action ~= 'loot' then
+                            alreadyLooted[heistId] = alreadyLooted[heistId] or {}
+                            alreadyLooted[heistId][lootKey] = true
+                        end
+                        
+                        -- C) Notify server step is complete
+                        TriggerServerEvent("cs_heistmaster:server:completeStep", heistId, stepIndex)
+                        
+                        local nextStepIndex = stepIndex + 1
+                        local nextStep = heist.steps[nextStepIndex]
+                        
                         if not nextStep then
-                            -- finished heist
-                            HeistClientState[heistId] = "cooldown"
+                            -- Finished all steps
                             TriggerServerEvent('cs_heistmaster:finishHeist', heistId)
                             currentHeistId = nil
                             break
@@ -460,224 +564,173 @@ local function runHeistThread(heistId, heist)
                             description = 'You failed the objective!',
                             type = 'error'
                         })
-                        HeistClientState[heistId] = "cooldown"
-                        if currentHeistId == heistId then
-                            currentHeistId = nil
-                        end
+                        -- F) Abort on failure
                         TriggerServerEvent('cs_heistmaster:abortHeist', heistId)
+                        currentHeistId = nil
                         break
                     end
                 end
             else
                 lib.hideTextUI()
             end
-
+            
+            ::continue_step_loop::
             Wait(0)
         end
     end)
 end
 
-------------------------------------------------------
--- Start heist from server
-------------------------------------------------------
+-- ============================================================
+-- A) REALISTIC START SYSTEM
+-- ============================================================
 
-RegisterNetEvent('cs_heistmaster:client:startHeist', function(heistId, heistData)
-    currentHeistId = heistId
-    currentStepIndex = 1
-    Heists[heistId] = heistData
-
-    -- Set heist state to active
-    HeistClientState[heistId] = "active"
-    
-    -- Initialize loot tracking
-    HeistLootedSteps[heistId] = {}
-
-    debugPrint('Heist started:', heistId)
-
-    lib.notify({
-        title = heistData.label,
-        description = 'Heist started. Follow the objectives.',
-        type = 'inform'
-    })
-
-    runHeistThread(heistId, heistData)
-end)
-
--- Used by /heist_start test command to show available ID error properly
-RegisterNetEvent('cs_heistmaster:client:forceStart', function(heistId)
-    TriggerServerEvent('cs_heistmaster:requestStart', heistId)
-end)
-
-------------------------------------------------------
--- NATURAL START SYSTEM (NO THIRD-EYE)
-------------------------------------------------------
-
+-- A1) Start Zone Trigger
 CreateThread(function()
-    Wait(2000)
-
     while true do
+        Wait(250)
+        
         local ped = PlayerPedId()
-        local pCoords = GetEntityCoords(ped)
-        local isArmedGun = IsPedArmed(ped, 4)  -- firearms
-        local isArmedMelee = IsPedArmed(ped, 1) -- melee
-        local isAiming = IsPlayerFreeAiming(PlayerId())
-
+        if IsPedInAnyVehicle(ped) then
+            lib.hideTextUI()
+            goto continue_start_loop
+        end
+        
+        local coords = GetEntityCoords(ped)
         local anyPrompt = false
-
-        for id, heist in pairs(Heists) do
-            local state = HeistClientState[id] or "idle"
+        
+        for heistId, heist in pairs(Config.Heists) do
+            local state = HeistClientState[heistId] or "idle"
             
             if state ~= "idle" then
-                goto continue_heist
+                goto continue_heist_start
             end
-
+            
+            -- Skip store heists (handled by clerk)
             if heist.heistType == 'store' then
-                -- Store heists are started via clerk, do nothing here.
-                goto continue_heist
-            elseif heist.heistType == 'fleeca' then
-                if heist.start then
-                    local startPos = vec3(heist.start.x, heist.start.y, heist.start.z)
-                    local dist = #(pCoords - startPos)
-                    if dist < 1.5 then
-                        anyPrompt = true
-                        lib.showTextUI(('[E] Start Fleeca Setup (%s)'):format(heist.label))
-                        if IsControlJustPressed(0, 38) then
-                            lib.hideTextUI()
-                            TriggerServerEvent('cs_heistmaster:requestStart', id)
-                            Wait(1200)
-                        end
-                    end
-                end
-            elseif heist.heistType == 'jewellery' then
-                -- Jewellery can use glass-smash logic or fallback start
-                local startPos = heist.start and vec3(heist.start.x, heist.start.y, heist.start.z)
-                if startPos then
-                    local dist = #(pCoords - startPos)
-                    if dist < 2.0 and (isArmedGun or isArmedMelee) then
-                        anyPrompt = true
-                        lib.showTextUI(('[E] Smash the glass and start the heist (%s)'):format(heist.label))
-                        if IsControlJustPressed(0, 38) then
-                            lib.hideTextUI()
-                            TriggerServerEvent('cs_heistmaster:requestStart', id)
-                            Wait(1200)
-                        end
-                    end
-                end
-            else
-                -- generic heist fallback
-                local startPos = heist.start and vec3(heist.start.x, heist.start.y, heist.start.z)
-                if startPos then
-                    local dist = #(pCoords - startPos)
-                    if dist < 1.5 then
-                        anyPrompt = true
-                        lib.showTextUI(('[E] Start %s'):format(heist.label))
-                        if IsControlJustPressed(0, 38) then
-                            lib.hideTextUI()
-                            TriggerServerEvent('cs_heistmaster:requestStart', id)
-                            Wait(1200)
-                        end
+                goto continue_heist_start
+            end
+            
+            if heist.start then
+                local startPos = vector3(heist.start.x, heist.start.y, heist.start.z)
+                local dist = #(coords - startPos)
+                
+                if dist < 2.0 then
+                    anyPrompt = true
+                    lib.showTextUI("[E] Start " .. heist.label)
+                    
+                    if IsControlJustReleased(0, 38) then
+                        lib.hideTextUI()
+                        TriggerServerEvent("cs_heistmaster:requestStart", heistId)
+                        Wait(1000)
                     end
                 end
             end
-
-            ::continue_heist::
+            
+            ::continue_heist_start::
         end
-
+        
         if not anyPrompt then
             lib.hideTextUI()
         end
-
-        Wait(0)
+        
+        ::continue_start_loop::
     end
 end)
 
-------------------------------------------------------
--- CLERK AI HANDLER (STORE TYPES)
-------------------------------------------------------
-
+-- A2) Clerk System
 local function spawnClerkForHeist(heistId, clerkData)
-    if SpawnedClerks[heistId] then
-        return SpawnedClerks[heistId]  -- already spawned
+    if SpawnedClerks[heistId] and DoesEntityExist(SpawnedClerks[heistId]) then
+        return SpawnedClerks[heistId]
     end
-
-    local model = joaat(clerkData.npcModel)
+    
+    local model = joaat(clerkData.npcModel or 'mp_m_shopkeep_01')
     RequestModel(model)
     while not HasModelLoaded(model) do Wait(0) end
-
-    local ped = CreatePed(4, model, clerkData.coords.x, clerkData.coords.y, clerkData.coords.z - 1.0, clerkData.coords.heading, false, false)
+    
+    local ped = CreatePed(4, model, clerkData.coords.x, clerkData.coords.y, clerkData.coords.z - 1.0, clerkData.coords.heading or 0.0, false, false)
     SetEntityInvincible(ped, true)
     SetBlockingOfNonTemporaryEvents(ped, true)
     SetPedFleeAttributes(ped, 0, 0)
     FreezeEntityPosition(ped, true)
-
+    
     SpawnedClerks[heistId] = ped
     return ped
 end
 
-------------------------------------------------------
--- CLERK BEHAVIOUR LOOP
-------------------------------------------------------
-
 CreateThread(function()
     Wait(2000)
-
+    
     while true do
+        Wait(0)
+        
         local ped = PlayerPedId()
         local pCoords = GetEntityCoords(ped)
         local hasGun = IsPedArmed(ped, 4)
         local aiming = IsPlayerFreeAiming(PlayerId())
-
-        for id, heist in pairs(Heists) do
+        
+        for heistId, heist in pairs(Heists) do
             if heist.heistType == 'store' and heist.clerk and heist.clerk.enabled then
-                -- PROMPT A: Only run clerk logic if heist is not on cooldown
-                local state = HeistClientState[id] or "idle"
+                local state = HeistClientState[heistId] or "idle"
+                
                 if state == "cooldown" then
-                    goto continue
+                    goto continue_clerk
                 end
-
-                local clerkPed = SpawnedClerks[id]
-                if not clerkPed then
-                    clerkPed = spawnClerkForHeist(id, heist.clerk)
+                
+                local clerkPed = SpawnedClerks[heistId]
+                if not clerkPed or not DoesEntityExist(clerkPed) then
+                    clerkPed = spawnClerkForHeist(heistId, heist.clerk)
                 end
-
+                
                 local clerkCoords = GetEntityCoords(clerkPed)
                 local dist = #(pCoords - clerkCoords)
-
-                -- too far to interact
-                if dist > 10.0 then goto continue end
-
-                -- Initialize runtime state for this heist
-                ClerkRuntimeState[id] = ClerkRuntimeState[id] or { panicked = false, gaveKey = false }
-                local rt = ClerkRuntimeState[id]
-
-                -- aiming gun at clerk → SURRENDER
+                
+                if dist > 10.0 then
+                    goto continue_clerk
+                end
+                
+                -- Initialize runtime state
+                ClerkRuntimeState[heistId] = ClerkRuntimeState[heistId] or { panicked = false, gaveKey = false, aggroTimer = 0 }
+                local rt = ClerkRuntimeState[heistId]
+                
+                -- A3) Aggro Start - gun pointing for >2 seconds
                 if dist < 5.0 and hasGun and aiming then
-                    -- surrender anim (if enabled)
+                    rt.aggroTimer = (rt.aggroTimer or 0) + 1
+                    
+                    if rt.aggroTimer > 120 then -- 2 seconds at 60fps
+                        -- Auto-start heist
+                        if state == "idle" then
+                            TriggerServerEvent('cs_heistmaster:requestStart', heistId)
+                            rt.aggroTimer = 0
+                            Wait(1500)
+                        end
+                    end
+                    
+                    -- Surrender animation
                     if heist.clerk.surrenderAnim then
                         RequestAnimDict('missfbi5ig_22')
                         while not HasAnimDictLoaded('missfbi5ig_22') do Wait(0) end
                         TaskPlayAnim(clerkPed, 'missfbi5ig_22', 'hands_up_anxious_scared', 8.0, -8.0, -1, 1, 0, false, false, false)
                     end
-
-                    -- PANIC LOGIC (only once)
+                    
+                    -- Panic logic (only once)
                     if not rt.panicked then
                         if math.random(1, 100) <= (heist.clerk.panicChance or 60) then
                             rt.panicked = true
-                            TriggerServerEvent('cs_heistmaster:clerkPanic', id)
+                            TriggerServerEvent('cs_heistmaster:clerkPanic', heistId)
                         end
                     end
-
-                    -- SAFE KEY LOGIC (only once)
+                    
+                    -- Safe key logic (only once)
                     if not rt.gaveKey and (heist.clerk.safeKeyChance or 0) > 0 then
                         if math.random(1, 100) <= heist.clerk.safeKeyChance then
                             rt.gaveKey = true
-
+                            
                             RequestAnimDict("mp_common")
                             while not HasAnimDictLoaded("mp_common") do Wait(0) end
                             TaskPlayAnim(clerkPed, "mp_common", "givetake1_a", 8.0, -8.0, 2000, 1, 0, false, false, false)
-
-                            TriggerServerEvent("cs_heistmaster:giveSafeKey", id)
-
+                            
+                            TriggerServerEvent("cs_heistmaster:giveSafeKey", heistId)
+                            
                             lib.notify({
                                 title = "Clerk",
                                 description = "The clerk gave you a safe key!",
@@ -685,23 +738,28 @@ CreateThread(function()
                             })
                         end
                     end
-
-                    -- START HEIST PROMPT
-                    if (HeistClientState[id] or "idle") == "idle" then
-                        lib.showTextUI("[E] Tell clerk to open the register")
-
-                        if IsControlJustPressed(0, 38) then
-                            lib.hideTextUI()
-                            TriggerServerEvent('cs_heistmaster:requestStart', id)
-                            Wait(1500)
+                    
+                    -- Show interact prompt
+                    if dist < 2.0 then
+                        if state == "idle" then
+                            lib.showTextUI("[E] Interact with clerk")
+                            
+                            if IsControlJustPressed(0, 38) then
+                                lib.hideTextUI()
+                                TriggerServerEvent('cs_heistmaster:requestStart', heistId)
+                                Wait(1500)
+                            end
                         end
                     end
+                else
+                    rt.aggroTimer = 0
+                    if dist > 5.0 then
+                        lib.hideTextUI()
+                    end
                 end
-
             end
-            ::continue::
+            
+            ::continue_clerk::
         end
-        Wait(0)
     end
 end)
-

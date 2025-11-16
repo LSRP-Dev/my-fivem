@@ -14,7 +14,7 @@ Config.Heists = {
 
         requiredPolice = 0,
         cooldown = 20 * 60,         -- seconds
-        requiredItem = 'weapon_crowbar',  -- nil = no item required
+        requiredItem = 'crowbar',  -- nil = no item required (use 'crowbar' or 'weapon_crowbar' depending on your item name)
 
         start = { x = -46.40, y = -1758.21, z = 29.42 },  -- where you start the robbery
 

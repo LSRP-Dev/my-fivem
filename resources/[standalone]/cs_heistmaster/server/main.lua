@@ -108,25 +108,46 @@ RegisterNetEvent('cs_heistmaster:requestStart', function(heistId)
     -- item check
     if heist.requiredItem and exports['ox_inventory'] then
         local itemName = heist.requiredItem
-        local searchResult = exports['ox_inventory']:Search(src, 'count', itemName)
-        local count = (type(searchResult) == 'number') and searchResult or 0
+        local count = 0
         
-        -- If not found, try lowercase version (for non-weapon items)
-        if count <= 0 and type(itemName) == 'string' and itemName:sub(1, 7):lower() ~= 'weapon_' then
-            searchResult = exports['ox_inventory']:Search(src, 'count', itemName:lower())
-            count = (type(searchResult) == 'number') and searchResult or 0
+        -- Try multiple item name variations
+        local itemVariations = {}
+        if type(itemName) == 'string' then
+            if itemName:sub(1, 7):lower() == 'weapon_' then
+                -- For weapon_ items, try: WEAPON_ITEM (uppercase), weapon_item (lowercase), and item (without prefix)
+                table.insert(itemVariations, itemName:upper())
+                table.insert(itemVariations, itemName:lower())
+                table.insert(itemVariations, itemName:sub(8):lower()) -- without weapon_ prefix
+            else
+                -- For regular items, try as-is and lowercase
+                table.insert(itemVariations, itemName)
+                table.insert(itemVariations, itemName:lower())
+            end
         end
         
-        -- If still not found and it's a weapon_, try without weapon_ prefix
-        if count <= 0 and type(itemName) == 'string' and itemName:sub(1, 7):lower() == 'weapon_' then
-            local itemWithoutPrefix = itemName:sub(8):lower()
-            searchResult = exports['ox_inventory']:Search(src, 'count', itemWithoutPrefix)
-            count = (type(searchResult) == 'number') and searchResult or 0
+        -- Try Search for each variation
+        for _, variation in ipairs(itemVariations) do
+            local searchResult = exports['ox_inventory']:Search(src, 'count', variation)
+            if type(searchResult) == 'number' and searchResult > 0 then
+                count = searchResult
+                break
+            end
+        end
+        
+        -- If still not found, try GetItem (more reliable for weapons)
+        if count <= 0 and exports['ox_inventory'].GetItem then
+            for _, variation in ipairs(itemVariations) do
+                local itemResult = exports['ox_inventory']:GetItem(src, variation, nil, true) -- true = return count
+                if type(itemResult) == 'number' and itemResult > 0 then
+                    count = itemResult
+                    break
+                end
+            end
         end
         
         if Config.Debug then
-            debugPrint(('Item check for %s: searchResult=%s, count=%s'):format(
-                heist.requiredItem, tostring(searchResult), tostring(count)
+            debugPrint(('Item check for %s: found count=%s (tried variations: %s)'):format(
+                heist.requiredItem, tostring(count), table.concat(itemVariations, ', ')
             ))
         end
         

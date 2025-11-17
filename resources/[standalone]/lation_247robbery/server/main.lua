@@ -306,13 +306,13 @@ RegisterNetEvent('lation_247robbery:FailedRobbery', function()
         EventLog('[main.lua]: lation_247robbery:FailedRobbery: global state wasnt initiated', 'error')
         return
     end
-    if not states[identifier] or states[identifier].state ~= 'completed' then
+    if not states[identifier] or states[identifier].state ~= 'in_progress' then
         EventLog('[main.lua]: lation_247robbery:FailedRobbery: robbery wasnt initiated for player', 'error')
         return
     end
-    local isNearRegister = IsPlayerNearby(source, 'computers')
-    if not isNearRegister then
-        EventLog('[main.lua]: lation_247robbery:CompleteRegisterRobbery: player not nearby any registers', 'error')
+    local isNearComputer = IsPlayerNearby(source, 'computers')
+    if not isNearComputer then
+        EventLog('[main.lua]: lation_247robbery:FailedRobbery: player not nearby any computers', 'error')
         return
     end
     GlobalState.started = false

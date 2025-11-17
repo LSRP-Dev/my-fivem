@@ -790,6 +790,9 @@ local function RegisterFleecaDoor(heistId, coords)
     
     Wait(500) -- Give DoorSystem more time to register
     
+    -- Set automatic rate for smooth animation
+    DoorSystemSetAutomaticRate(doorId, 10.0, false, false)
+    
     -- Set door to opening state first (required by DoorSystem)
     DoorSystemSetDoorState(doorId, 4, false, false)
     Wait(100)
@@ -829,15 +832,24 @@ function OpenVaultDoor(heistId)
     -- Find the door entity
     local doorEntity, doorCoords = FindDefaultVaultDoor(vaultCoords, heistId)
     
+    local actualDoorId = doorId
+    local useEntityHash = false
+    
     if doorEntity and DoesEntityExist(doorEntity) then
         debugPrint(('Found door entity: %d at %s'):format(doorEntity, tostring(doorCoords)))
+        
+        -- Try to get the door's hash if it's already in DoorSystem
+        local entityModel = GetEntityModel(doorEntity)
         
         -- Register the door using its actual coordinates
         RemoveDoorFromSystem(doorId)
         RemoveDoorFromSystem(fleecaDoorHash)
+        RemoveDoorFromSystem(entityModel) -- Remove by model hash too
         Wait(100)
         
         if doorCoords then
+            -- Try multiple approaches
+            -- Approach 1: Use custom door ID
             AddDoorToSystem(
                 doorId,
                 fleecaDoorHash,
@@ -846,8 +858,23 @@ function OpenVaultDoor(heistId)
                 doorCoords.z,
                 false, false, false
             )
+            
+            -- Approach 2: Also register with model hash (in case custom ID doesn't work)
+            AddDoorToSystem(
+                entityModel,
+                fleecaDoorHash,
+                doorCoords.x,
+                doorCoords.y,
+                doorCoords.z,
+                false, false, false
+            )
+            
+            Wait(500) -- Give more time for registration
+            
+            -- Set automatic rate for smooth animation
+            DoorSystemSetAutomaticRate(doorId, 10.0, false, false)
+            DoorSystemSetAutomaticRate(entityModel, 10.0, false, false)
         end
-        Wait(300)
     else
         debugPrint(('WARNING: Door entity not found, using config coordinates'))
         -- Re-register with config coords
@@ -859,12 +886,36 @@ function OpenVaultDoor(heistId)
     local doorState = DoorSystemGetDoorState(doorId)
     local openRatio = DoorSystemGetOpenRatio(doorId)
     
-    debugPrint(('Door state before opening: %d, ratio: %.2f'):format(doorState, openRatio))
+    debugPrint(('Door state before opening (custom ID): %d, ratio: %.2f'):format(doorState, openRatio))
     
-    -- If door state is still invalid, try using the model hash directly
-    if doorState == 0 then
-        debugPrint(('Door not registered with custom ID, trying model hash directly...'))
-        -- Try using the model hash as the door ID
+    -- Try opening with custom door ID first
+    if doorState ~= 0 or openRatio ~= 0.0 then
+        debugPrint(('Opening door with custom ID: %d'):format(doorId))
+        
+        -- Set to OPENING state first (required by DoorSystem)
+        DoorSystemSetDoorState(doorId, 4, false, false)
+        Wait(100)
+        
+        -- Unlock door
+        DoorSystemSetDoorState(doorId, 0, false, false)
+        Wait(100)
+        
+        -- Set automatic rate for smooth animation
+        DoorSystemSetAutomaticRate(doorId, 10.0, false, false)
+        
+        -- Animate open smoothly
+        debugPrint(('Animating door open with doorId: %d...'):format(doorId))
+        for i = 0.0, 1.0, 0.01 do
+            DoorSystemSetOpenRatio(doorId, i, false, false)
+            Wait(10)
+        end
+        
+        -- Final state: fully open
+        DoorSystemSetDoorState(doorId, 6, false, false)
+    else
+        -- Try using model hash directly
+        debugPrint(('Custom ID not working, trying model hash: %d'):format(fleecaDoorHash))
+        
         local modelHashId = fleecaDoorHash
         AddDoorToSystem(
             modelHashId,
@@ -874,12 +925,20 @@ function OpenVaultDoor(heistId)
             vaultCoords.z,
             false, false, false
         )
-        Wait(300)
+        Wait(500)
         
-        -- Try opening with model hash
+        -- Set automatic rate
+        DoorSystemSetAutomaticRate(modelHashId, 10.0, false, false)
+        
+        -- Set to OPENING state first
+        DoorSystemSetDoorState(modelHashId, 4, false, false)
+        Wait(100)
+        
+        -- Unlock
         DoorSystemSetDoorState(modelHashId, 0, false, false)
         Wait(100)
         
+        -- Animate open
         for i = 0.0, 1.0, 0.01 do
             DoorSystemSetOpenRatio(modelHashId, i, false, false)
             Wait(10)
@@ -887,20 +946,6 @@ function OpenVaultDoor(heistId)
         
         DoorSystemSetDoorState(modelHashId, 6, false, false)
         debugPrint(('Attempted to open door using model hash: %d'):format(modelHashId))
-    else
-        -- Unlock door
-        DoorSystemSetDoorState(doorId, 0, false, false)
-        Wait(100)
-        
-        -- Animate open
-        debugPrint(('Animating door open with doorId: %d...'):format(doorId))
-        for i = 0.0, 1.0, 0.01 do
-            DoorSystemSetOpenRatio(doorId, i, false, false)
-            Wait(10)
-        end
-        
-        -- Final state: fully open
-        DoorSystemSetDoorState(doorId, 6, false, false)
     end
     
     -- Verify final state

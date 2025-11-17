@@ -591,148 +591,71 @@ RegisterNetEvent('cs_heistmaster:client:forceStart', function(heistId)
 end)
 
 -- ============================================================
--- VAULT DOOR SYSTEM (PROMPT B)
+-- VAULT DOOR SYSTEM - Simple & Clean
 -- ============================================================
 
 local function deleteDefaultVaultDoor(coords)
     local model1 = `v_ilev_bk_vaultdoor`
     local model2 = `v_ilev_gb_vauldr`
-    local objects = GetGamePool('CObject')
-    local deletedCount = 0
-    
-    for _, obj in ipairs(objects) do
-        if DoesEntityExist(obj) then
-            local objModel = GetEntityModel(obj)
-            local objCoords = GetEntityCoords(obj)
+        local objects = GetGamePool('CObject')
+        
+        for _, obj in ipairs(objects) do
+            if DoesEntityExist(obj) then
+                local objModel = GetEntityModel(obj)
+                local objCoords = GetEntityCoords(obj)
             local dist = #(coords - objCoords)
             
-            -- Check if it's a vault door model and NOT our custom door
             if (objModel == model1 or objModel == model2) and dist < 10.0 then
                 local isOurDoor = false
-                -- Check if this is one of our custom spawned doors
                 for heistId, customDoor in pairs(VaultDoors) do
                     if customDoor == obj then
                         isOurDoor = true
                         break
-                    end
-                end
-                
-                -- Only delete if it's NOT our custom door
+            end
+        end
+        
                 if not isOurDoor then
                     SetEntityAsMissionEntity(obj, true, true)
-                    SetEntityAlpha(obj, 0, false)
-                    SetEntityCollision(obj, false, false)
                     DeleteEntity(obj)
-                    deletedCount = deletedCount + 1
-                    debugPrint(('Deleted default vault door at %s (model: %d, dist: %.2f)'):format(tostring(objCoords), objModel, dist))
+                    end
                 end
             end
         end
-    end
-    
-    -- Also try GetClosestObjectOfType as fallback
-    local obj1 = GetClosestObjectOfType(coords.x, coords.y, coords.z, 10.0, model1, false, false, false)
-    if obj1 ~= 0 then
-        local isOurDoor = false
-        for heistId, customDoor in pairs(VaultDoors) do
-            if customDoor == obj1 then
-                isOurDoor = true
-                break
-            end
-        end
-        if not isOurDoor then
-            SetEntityAsMissionEntity(obj1, true, true)
-            DeleteEntity(obj1)
-            deletedCount = deletedCount + 1
-        end
-    end
-    
-    local obj2 = GetClosestObjectOfType(coords.x, coords.y, coords.z, 10.0, model2, false, false, false)
-    if obj2 ~= 0 then
-        local isOurDoor = false
-        for heistId, customDoor in pairs(VaultDoors) do
-            if customDoor == obj2 then
-                isOurDoor = true
-                break
-            end
-        end
-        if not isOurDoor then
-            SetEntityAsMissionEntity(obj2, true, true)
-            DeleteEntity(obj2)
-            deletedCount = deletedCount + 1
-        end
-    end
-    
-    if deletedCount > 0 then
-        debugPrint(('deleteDefaultVaultDoor: Removed %d default door(s) at %s'):format(deletedCount, tostring(coords)))
-    end
 end
 
 RegisterNetEvent('cs_heistmaster:client:spawnVaultDoor', function(heistId, coordsTable, heading, modelName, isOpen)
-    print(string.format('^2[VAULT DOOR] spawnVaultDoor event received for heist: %s^7', heistId))
-    print(string.format('^3[VAULT DOOR] Coords: %s, Heading: %s, Model: %s, Open: %s^7', tostring(coordsTable), tostring(heading), tostring(modelName), tostring(isOpen)))
-    
     local coords = vector3(coordsTable.x, coordsTable.y, coordsTable.z)
     
-    -- Delete default doors first
+    -- Delete default doors
     deleteDefaultVaultDoor(coords)
-    Wait(200) -- Give time for deletion
+    Wait(100)
     
-    -- Cleanup existing custom door
+    -- Cleanup existing door
     if VaultDoors[heistId] and DoesEntityExist(VaultDoors[heistId]) then
-        print(string.format('^3[VAULT DOOR] Deleting existing door entity: %d^7', VaultDoors[heistId]))
         DeleteEntity(VaultDoors[heistId])
         VaultDoors[heistId] = nil
-        Wait(200)
     end
     
     local model = joaat(modelName or 'v_ilev_gb_vauldr')
-    print(string.format('^3[VAULT DOOR] Requesting model: %s (hash: %d)^7', modelName or 'v_ilev_gb_vauldr', model))
     RequestModel(model)
-    local attempts = 0
-    while not HasModelLoaded(model) do 
-        Wait(10)
-        attempts = attempts + 1
-        if attempts > 100 then
-            print(string.format('^1[VAULT DOOR] ERROR: Model failed to load after 100 attempts!^7'))
-            return
-        end
-    end
-    print(string.format('^2[VAULT DOOR] Model loaded successfully^7'))
+    while not HasModelLoaded(model) do Wait(0) end
     
-    -- Try CreateObject instead of CreateObjectNoOffset - sometimes works better
-    print(string.format('^3[VAULT DOOR] Spawning door at: %s^7', tostring(coords)))
+    -- Spawn door
     local door = CreateObject(model, coords.x, coords.y, coords.z, true, true, false)
-    
-    if not door or door == 0 then
-        print(string.format('^1[VAULT DOOR] ERROR: Failed to create door object!^7'))
-        return
-    end
-    
-    print(string.format('^2[VAULT DOOR] Door entity created: %d^7', door))
-    
-    -- Make sure door is visible
-    SetEntityAlpha(door, 255, false)
-    SetEntityVisible(door, true, false)
+    SetEntityHeading(door, heading or 250.0)
     SetEntityCollision(door, true, true)
+    FreezeEntityPosition(door, true)
     SetEntityAsMissionEntity(door, true, true)
     
-    SetEntityHeading(door, heading or 250.0)
-    FreezeEntityPosition(door, true)
-    
     VaultDoors[heistId] = door
-    
-    local finalCoords = GetEntityCoords(door)
-    local finalHeading = GetEntityHeading(door)
-    print(string.format('^2[VAULT DOOR] Door spawned successfully! Entity: %d, Final coords: %s, Final heading: %.2f^7', door, tostring(finalCoords), finalHeading))
-    debugPrint(('Vault door spawned for heist %s at %s (heading: %.2f, entity: %d, open: %s)'):format(heistId, tostring(coords), heading or 250.0, door, tostring(isOpen)))
     
     if isOpen then
         local openHeading = (heading or 250.0) + 110.0
         SetEntityHeading(door, openHeading)
         SetEntityCollision(door, false, false)
-        print(string.format('^2[VAULT DOOR] Door set to open position (heading: %.2f)^7', openHeading))
     end
+    
+    debugPrint(('Vault door spawned: %s at %s (heading: %.2f)'):format(heistId, tostring(coords), heading or 250.0))
 end)
 
 local function animateVaultDoorOpen(heistId)
@@ -740,7 +663,6 @@ local function animateVaultDoorOpen(heistId)
     if not door or not DoesEntityExist(door) then return end
     
     local startHeading = GetEntityHeading(door)
-    -- Rotate door open in positive direction (clockwise) - adjust if needed
     local endHeading = startHeading + 110.0
     
     FreezeEntityPosition(door, false)
@@ -776,11 +698,9 @@ RegisterNetEvent('cs_heistmaster:client:resetVaultDoor', function(heistId, coord
     local coords = vector3(heist.vault.coords.x, heist.vault.coords.y, heist.vault.coords.z)
     local model = joaat(modelName or heist.vault.doorModel or 'v_ilev_gb_vauldr')
     
-    -- delete current custom door if it exists
     if VaultDoors[heistId] and DoesEntityExist(VaultDoors[heistId]) then
         DeleteEntity(VaultDoors[heistId])
         VaultDoors[heistId] = nil
-        Wait(100)
     end
     
     deleteDefaultVaultDoor(coords)
@@ -789,82 +709,36 @@ RegisterNetEvent('cs_heistmaster:client:resetVaultDoor', function(heistId, coord
     RequestModel(model)
     while not HasModelLoaded(model) do Wait(0) end
     
-    -- Spawn door at exact coordinates
-    local door = CreateObjectNoOffset(model, coords.x, coords.y, coords.z, false, false, false)
-    
-    -- Make sure door is visible
-    SetEntityAlpha(door, 255, false)
-    SetEntityVisible(door, true, false)
-    SetEntityCollision(door, true, true)
-    
+    local door = CreateObject(model, coords.x, coords.y, coords.z, true, true, false)
     SetEntityHeading(door, heist.vault.heading or heading or 250.0)
+    SetEntityCollision(door, true, true)
     FreezeEntityPosition(door, true)
+    SetEntityAsMissionEntity(door, true, true)
     VaultDoors[heistId] = door
     
-    debugPrint(('Vault door reset to closed for heist: %s at %s (heading: %.2f, entity: %d)'):format(heistId, tostring(coords), heist.vault.heading or heading or 250.0, door))
+    debugPrint(('Vault door reset: %s at %s (heading: %.2f)'):format(heistId, tostring(coords), heist.vault.heading or heading or 250.0))
 end)
 
 -- Continuous monitoring to prevent default doors from respawning
 CreateThread(function()
-    Wait(3000) -- Wait for game to load
+    Wait(3000)
     while true do
-        Wait(5000) -- Check every 5 seconds
+    Wait(5000)
         
         local playerCoords = GetEntityCoords(PlayerPedId())
         
-        -- Check all fleeca/bank heists
         for heistId, heist in pairs(Config.Heists) do
             if (heist.heistType == 'fleeca' or heist.heistType == 'bank') and heist.vault and heist.vault.coords then
                 local vaultCoords = vector3(heist.vault.coords.x, heist.vault.coords.y, heist.vault.coords.z)
                 local dist = #(playerCoords - vaultCoords)
                 
-                -- Only monitor if player is within 100m of the bank
                 if dist < 100.0 then
-                    -- Only delete default doors, not our custom door
                     deleteDefaultVaultDoor(vaultCoords)
-                    
-                    -- Verify our custom door still exists and is visible
-                    if VaultDoors[heistId] and DoesEntityExist(VaultDoors[heistId]) then
-                        local door = VaultDoors[heistId]
-                        SetEntityAlpha(door, 255, false)
-                        SetEntityVisible(door, true, false)
-                    end
                 end
             end
         end
     end
 end)
-
--- Debug command to check door status
-RegisterCommand('checkvaultdoor', function()
-    local heistId = 'fleeca_legion'
-    local heist = Config.Heists[heistId]
-    if not heist or not heist.vault then
-        print('^1[DEBUG] Heist not found^7')
-        return
-    end
-    
-    local coords = vector3(heist.vault.coords.x, heist.vault.coords.y, heist.vault.coords.z)
-    local playerCoords = GetEntityCoords(PlayerPedId())
-    local dist = #(playerCoords - coords)
-    
-    print(string.format('^3[DEBUG] Vault coords: %s^7', tostring(coords)))
-    print(string.format('^3[DEBUG] Player coords: %s^7', tostring(playerCoords)))
-    print(string.format('^3[DEBUG] Distance: %.2f^7', dist))
-    
-    if VaultDoors[heistId] then
-        local door = VaultDoors[heistId]
-        if DoesEntityExist(door) then
-            local doorCoords = GetEntityCoords(door)
-            local doorHeading = GetEntityHeading(door)
-            print(string.format('^2[DEBUG] Door exists: entity %d at %s, heading: %.2f^7', door, tostring(doorCoords), doorHeading))
-        else
-            print('^1[DEBUG] Door entity does not exist^7')
-        end
-    else
-        print('^1[DEBUG] No door in VaultDoors table^7')
-    end
-end, false)
 
 -- ============================================================
 -- D) GUARDS SYSTEM

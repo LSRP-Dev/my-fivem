@@ -622,10 +622,14 @@ RegisterNetEvent('cs_heistmaster:client:spawnVaultDoor', function(heistId, coord
     RequestModel(model)
     while not HasModelLoaded(model) do Wait(0) end
     
-    local door = CreateObject(model, coords.x, coords.y, coords.z, true, true, false)
+    -- Use CreateObjectNoOffset for precise positioning, with Z offset to align with vault entrance
+    local door = CreateObjectNoOffset(model, coords.x, coords.y, coords.z - 1.0, false, false, false)
     SetEntityHeading(door, heading or 160.0)
+    SetEntityCollision(door, true, true)
     FreezeEntityPosition(door, true)
     VaultDoors[heistId] = door
+    
+    debugPrint(('Vault door spawned for heist %s at %s (heading: %.2f, open: %s)'):format(heistId, tostring(coords), heading or 160.0, tostring(isOpen)))
     
     if isOpen then
         local openHeading = (heading or 160.0) - 110.0
@@ -685,12 +689,14 @@ RegisterNetEvent('cs_heistmaster:client:resetVaultDoor', function(heistId, coord
     RequestModel(model)
     while not HasModelLoaded(model) do Wait(0) end
     
-    local door = CreateObject(model, coords.x, coords.y, coords.z, true, true, false)
+    -- Use CreateObjectNoOffset for precise positioning, with Z offset to align with vault entrance
+    local door = CreateObjectNoOffset(model, coords.x, coords.y, coords.z - 1.0, false, false, false)
     SetEntityHeading(door, heist.vault.heading or heading or 160.0)
+    SetEntityCollision(door, true, true)
     FreezeEntityPosition(door, true)
     VaultDoors[heistId] = door
     
-    debugPrint(('Vault door reset to closed for heist: %s'):format(heistId))
+    debugPrint(('Vault door reset to closed for heist: %s at %s (heading: %.2f)'):format(heistId, tostring(coords), heist.vault.heading or heading or 160.0))
 end)
 
 -- ============================================================

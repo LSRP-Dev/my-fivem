@@ -814,10 +814,31 @@ end
 function OpenVaultDoor(heistId)
     local doorId = getDoorId(heistId)
     
+    debugPrint(('Attempting to open vault door for heist: %s (doorId: %d)'):format(heistId, doorId))
+    
+    -- Check if door is registered in DoorSystem
+    local doorState = DoorSystemGetDoorState(doorId)
+    local openRatio = DoorSystemGetOpenRatio(doorId)
+    
+    debugPrint(('Door state before opening: %d, ratio: %.2f'):format(doorState, openRatio))
+    
+    -- If door state is 0 (invalid/not registered), try to register it first
+    if doorState == 0 and openRatio == 0.0 then
+        debugPrint(('Door may not be registered. Attempting to register...'))
+        local heist = Config.Heists[heistId]
+        if heist and heist.vault and heist.vault.coords then
+            local vaultCoords = vecFromTable(heist.vault.coords)
+            RegisterFleecaDoor(heistId, vaultCoords)
+            Wait(500)
+        end
+    end
+    
     -- Unlock door
     DoorSystemSetDoorState(doorId, 0, false, false)
+    Wait(100)
     
     -- Animate open
+    debugPrint(('Animating door open...'))
     for i = 0.0, 1.0, 0.01 do
         DoorSystemSetOpenRatio(doorId, i, false, false)
         Wait(10)
@@ -826,7 +847,11 @@ function OpenVaultDoor(heistId)
     -- Final state: fully open
     DoorSystemSetDoorState(doorId, 6, false, false)
     
-    debugPrint(('Vault door opened for heist: %s'):format(heistId))
+    -- Verify final state
+    local finalState = DoorSystemGetDoorState(doorId)
+    local finalRatio = DoorSystemGetOpenRatio(doorId)
+    
+    debugPrint(('Vault door opened for heist: %s (final state: %d, ratio: %.2f)'):format(heistId, finalState, finalRatio))
 end
 
 -- Close the vault door
@@ -861,6 +886,18 @@ end)
 
 -- 3️⃣ OPEN DOOR AFTER DRILLING
 RegisterNetEvent("cs_heistmaster:client:openVaultDoor", function(heistId)
+    debugPrint(('Received openVaultDoor event for heist: %s'):format(heistId))
+    
+    -- Make sure door is registered first (in case it wasn't found earlier)
+    local heist = Config.Heists[heistId]
+    if heist and heist.vault and heist.vault.coords then
+        local vaultCoords = vecFromTable(heist.vault.coords)
+        -- Re-register door to ensure it's in DoorSystem
+        RegisterFleecaDoor(heistId, vaultCoords)
+        Wait(500) -- Give it time to register
+    end
+    
+    -- Now open the door
     OpenVaultDoor(heistId)
 end)
 

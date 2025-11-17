@@ -437,11 +437,14 @@ RegisterNetEvent('cs_heistmaster:requestStart', function(heistId)
     -- send guards (if any) to everyone
     TriggerClientEvent('cs_heistmaster:client:spawnGuards', -1, heistId, heist.guards or {})
 
-    -- PROMPT B: Initialize vault door state for Fleeca banks
-    if heist.heistType == 'fleeca' and heist.vault then
+    -- PROMPT B: Initialize vault door state and spawn closed door for fleeca/bank heists
+    if (heist.heistType == 'fleeca' or heist.heistType == 'bank') and heist.vault then
         if not FleecaVaultState[heistId] then
             FleecaVaultState[heistId] = { spawned = true, open = false }
         end
+        -- Spawn closed door when heist starts
+        TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', -1, heistId, heist.vault.coords, heist.vault.heading or 160.0, heist.vault.doorModel, false)
+        debugPrint(('Vault door spawned (closed) for heist start: %s'):format(heistId))
     end
 end)
 
@@ -541,15 +544,17 @@ RegisterNetEvent('cs_heistmaster:finishHeist', function(heistId)
         HeistCrew[heistId] = nil -- Clear crew tracking
         SafeOpened[heistId] = nil -- Clear safe opened tracking
         
-        -- 6️⃣ RESET DOOR WHEN COOLDOWN EXPIRES - Delete and respawn door
-        if heist.heistType == 'fleeca' and FleecaVaultState[heistId] and heist.vault then
-            FleecaVaultState[heistId].open = false
-            -- Delete and respawn door as closed
-            TriggerClientEvent("cs_heistmaster:client:spawnVaultDoor", -1, heistId, heist.vault.coords, heist.vault.heading or 160.0, false)
-        end
-        
         -- Reset to idle after cooldown
         setHeistState(heistId, "idle")
+        
+        -- 6️⃣ RESET DOOR WHEN COOLDOWN EXPIRES
+        if (heist.heistType == 'fleeca' or heist.heistType == 'bank') and heist.vault then
+            if FleecaVaultState[heistId] then
+                FleecaVaultState[heistId].open = false
+            end
+            TriggerClientEvent('cs_heistmaster:client:resetVaultDoor', -1, heistId)
+            debugPrint(('Vault door reset to closed after cooldown for heist: %s'):format(heistId))
+        end
     end)
 
     TriggerClientEvent('cs_heistmaster:client:cleanupHeist', -1, heistId)
@@ -788,7 +793,7 @@ end)
 RegisterNetEvent('cs_heistmaster:server:setVaultOpen', function(heistId)
     local src = source
     local heist = Heists[heistId]
-    if not heist or heist.heistType ~= 'fleeca' then return end
+    if not heist or (heist.heistType ~= 'fleeca' and heist.heistType ~= 'bank') then return end
 
     if not FleecaVaultState[heistId] then
         FleecaVaultState[heistId] = { spawned = true, open = false }
@@ -844,8 +849,25 @@ RegisterNetEvent('cs_heistmaster:server:syncVaultDoors', function()
     local src = source
     for heistId, state in pairs(FleecaVaultState) do
         local h = Config.Heists[heistId]
-        if h and h.vault and h.heistType == 'fleeca' then
-            TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', src, heistId, h.vault.coords, h.vault.heading or 160.0, state.open)
+        if h and h.vault and (h.heistType == 'fleeca' or h.heistType == 'bank') then
+            TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', src, heistId, h.vault.coords, h.vault.heading or 160.0, h.vault.doorModel, state.open)
+        end
+    end
+    
+    -- Also spawn closed doors for fleeca/bank heists that don't have state yet (idle state)
+    for heistId, h in pairs(Config.Heists) do
+        if h.vault and (h.heistType == 'fleeca' or h.heistType == 'bank') then
+            local heistState = getHeistState(heistId)
+            if not FleecaVaultState[heistId] then
+                -- No state = idle, spawn closed door
+                TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', src, heistId, h.vault.coords, h.vault.heading or 160.0, h.vault.doorModel, false)
+            elseif heistState == "active" and FleecaVaultState[heistId].open then
+                -- Active heist with open door - sync it as open
+                TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', src, heistId, h.vault.coords, h.vault.heading or 160.0, h.vault.doorModel, true)
+            elseif heistState == "idle" then
+                -- Idle state - spawn closed door
+                TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', src, heistId, h.vault.coords, h.vault.heading or 160.0, h.vault.doorModel, false)
+            end
         end
     end
 end)

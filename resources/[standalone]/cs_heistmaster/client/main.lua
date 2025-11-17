@@ -21,6 +21,9 @@ local StepObjects = {} -- [heistId] = { [stepIndex] = object }
 -- PATCH: Vault Door Entity Management
 HeistState = HeistState or {} -- [heistId] = { vaultObj = entity }
 
+-- Shared vault door variable for Fleeca heists
+local VaultDoor = nil
+
 -- ============================================================
 -- HELPERS
 -- ============================================================
@@ -1174,13 +1177,31 @@ local function handleDrillAction(heistId, heist, step, stepIndex)
             TriggerServerEvent('cs_heistmaster:safeReward', heistId)
         end
         
-        -- FIX: Open vault door for Fleeca - trigger immediately after drilling
-        if heist.heistType == 'fleeca' and heist.vault then
+        -- Step 2: Rotate the Door Open After Drilling - for Fleeca heists
+        if heist.heistType == 'fleeca' and VaultDoor and DoesEntityExist(VaultDoor) then
             debugPrint(('Drilling complete, opening vault door for heist: %s'):format(heistId))
-            TriggerServerEvent('cs_heistmaster:server:setVaultOpen', heistId)
-            -- Also trigger client-side immediately as fallback
-            Wait(100) -- Small delay to ensure server event is processed
-            TriggerEvent('cs_heistmaster:client:openVaultDoor', heistId)
+            
+            -- Optional delay before door opens
+            Wait(1000)
+            
+            -- Rotate the vault door open
+            local currentHeading = GetEntityHeading(VaultDoor)
+            local targetHeading = currentHeading - 90.0
+            local step = 0.25
+            
+            -- Unfreeze door to allow rotation
+            FreezeEntityPosition(VaultDoor, false)
+            
+            CreateThread(function()
+                while math.abs(GetEntityHeading(VaultDoor) - targetHeading) > 1.0 do
+                    if not DoesEntityExist(VaultDoor) then break end
+                    SetEntityHeading(VaultDoor, GetEntityHeading(VaultDoor) - step)
+                    Wait(10)
+                end
+                if DoesEntityExist(VaultDoor) then
+                    FreezeEntityPosition(VaultDoor, true)
+                end
+            end)
         end
         
         -- Mark as completed
@@ -1739,12 +1760,26 @@ RegisterNetEvent('cs_heistmaster:client:startHeist', function(heistId, heistData
     })
     
     -- CRITICAL FIX: Spawn vault door immediately when heist starts (for Fleeca banks)
-    -- NOTE: Door spawning is now handled by server event 'cs_heistmaster:client:spawnVaultDoor'
-    -- This prevents duplicate spawning. The server triggers this event when heist starts.
-    -- We don't need to spawn here anymore to avoid triple spawning.
-    if heistData.heistType == 'fleeca' and heistData.vault and heistData.vault.coords then
-        debugPrint(('startHeist: Fleeca heist started, vault door will be spawned by server event: %s'):format(heistId))
-        -- Server will trigger spawnVaultDoor event, no need to spawn here
+    -- Step 1: Spawn the Vault Door (Once) - for Fleeca heists
+    if heistData.heistType == 'fleeca' then
+        local vaultCoords = vec3(148.025, -1044.364, 29.506)
+        local vaultHeading = 249.5
+        local model = `v_ilev_gb_vauldr`
+        
+        RequestModel(model)
+        while not HasModelLoaded(model) do Wait(0) end
+        
+        -- Cleanup if door exists
+        if DoesEntityExist(VaultDoor) then 
+            DeleteEntity(VaultDoor) 
+        end
+        
+        -- Spawn the vault door
+        VaultDoor = CreateObject(model, vaultCoords.x, vaultCoords.y, vaultCoords.z, true, false, false)
+        SetEntityHeading(VaultDoor, vaultHeading)
+        FreezeEntityPosition(VaultDoor, true)
+        
+        debugPrint(('Vault door spawned for Fleeca heist: %s'):format(heistId))
     end
     
     -- Spawn step objects with target options

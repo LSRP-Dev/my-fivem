@@ -437,25 +437,14 @@ RegisterNetEvent('cs_heistmaster:requestStart', function(heistId)
     -- send guards (if any) to everyone
     TriggerClientEvent('cs_heistmaster:client:spawnGuards', -1, heistId, heist.guards or {})
 
-    -- PROMPT B: Initialize vault door state and spawn for Fleeca banks
-    if heist.heistType == 'fleeca' and heist.vault and heist.vault.coords then
+    -- PROMPT B: Initialize vault door state for Fleeca banks
+    if heist.heistType == 'fleeca' and heist.vault then
         if not FleecaVaultState[heistId] then
             FleecaVaultState[heistId] = { spawned = true, open = false }
         end
-        TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', -1, heistId, heist.vault.coords, heist.vault.heading or 160.0, false)
     end
 end)
 
--- Handle vault door spawn on heist start
-RegisterNetEvent("cs_heistmaster:server:spawnVaultDoorOnStart", function(heistId)
-    local heist = Heists[heistId]
-    if heist and heist.heistType == 'fleeca' and heist.vault and heist.vault.coords then
-        if not FleecaVaultState[heistId] then
-            FleecaVaultState[heistId] = { spawned = true, open = false }
-        end
-        TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', -1, heistId, heist.vault.coords, heist.vault.heading or 160.0, false)
-    end
-end)
 
 ----------------------------------------------------------------
 -- Finish & reward
@@ -555,12 +544,7 @@ RegisterNetEvent('cs_heistmaster:finishHeist', function(heistId)
         -- 6️⃣ RESET DOOR WHEN COOLDOWN EXPIRES
         if heist.heistType == 'fleeca' and FleecaVaultState[heistId] then
             FleecaVaultState[heistId].open = false
-            -- Close the door on all clients
-            TriggerClientEvent("cs_heistmaster:client:closeVaultDoor", -1, heistId)
-            -- Re-register door as closed
-            if heist.vault and heist.vault.coords then
-                TriggerClientEvent("cs_heistmaster:client:spawnVaultDoor", -1, heistId, heist.vault.coords, heist.vault.heading, false)
-            end
+            TriggerClientEvent("cs_heistmaster:client:resetVaultDoor", -1, heistId)
         end
         
         -- Reset to idle after cooldown
@@ -863,8 +847,12 @@ RegisterNetEvent('cs_heistmaster:server:syncVaultDoors', function()
     local src = source
     for heistId, state in pairs(FleecaVaultState) do
         local h = Config.Heists[heistId]
-        if h and h.vault and h.vault.coords then
-            TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', src, heistId, h.vault.coords, h.vault.heading, state.open)
+        if h and h.vault and h.heistType == 'fleeca' then
+            if state.open then
+                TriggerClientEvent('cs_heistmaster:client:openVaultDoor', src, heistId)
+            else
+                TriggerClientEvent('cs_heistmaster:client:resetVaultDoor', src, heistId)
+            end
         end
     end
 end)

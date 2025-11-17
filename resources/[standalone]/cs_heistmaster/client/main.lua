@@ -15,17 +15,12 @@ local ClerkRuntimeState = {} -- [heistId] = { panicked = false, gaveKey = false,
 -- Entity tracking
 local guards = {} -- [heistId] = { ped1, ped2, ... }
 local SpawnedClerks = {} -- [heistId] = ped
-local VaultDoors = {} -- [heistId] = { obj = entity, heading = number, open = boolean } (legacy, kept for compatibility)
 local StepObjects = {} -- [heistId] = { [stepIndex] = object }
 
--- PATCH: Vault Door Entity Management
-HeistState = HeistState or {} -- [heistId] = { vaultObj = entity }
+HeistState = HeistState or {} -- [heistId] = { ... }
 
 -- Shared vault door variable for Fleeca heists (legacy, kept for compatibility)
-local VaultDoor = nil
-
--- Vault door tracking per heist
-VaultDoors = VaultDoors or {} -- [heistId] = { entity = entity, open = boolean }
+-- Vault door system - DoorSystem only, no props
 
 -- ============================================================
 -- HELPERS
@@ -596,530 +591,78 @@ RegisterNetEvent('cs_heistmaster:client:forceStart', function(heistId)
 end)
 
 -- ============================================================
--- B) VAULT DOOR SYSTEM - Using GTA Native DoorSystem
+-- VAULT DOOR SYSTEM - Clean DoorSystem Implementation
 -- ============================================================
 
--- Fleeca vault door configuration
-local fleecaDoorHash = 2121050683 -- prop_fleeca_vaultdoor
-local fleecaDoorIds = {} -- [heistId] = doorId
+-- 3.1 Define correct door hash + IDs
+local FLEECA_VAULT_MODEL = 2121050683 -- prop_fleeca_vaultdoor
+local fleecaDoorIds = {} -- [heistId] = uniqueDoorId
 
--- Get door ID for a heist
-local function getDoorId(heistId)
-    if not fleecaDoorIds[heistId] then
-        fleecaDoorIds[heistId] = GetHashKey("fleeca_vault_door_" .. heistId)
-    end
-    return fleecaDoorIds[heistId]
-end
+-- 3.2 Clean registration function
+local function RegisterFleecaVaultDoor(heistId)
+    local heist = Config.Heists[heistId]
+    if not heist or not heist.vault then return end
 
--- Remove only PROP vault doors that we spawned (not the default map door)
-local function RemovePropVaultDoors(coords)
-    local objects = GetGamePool('CObject')
-    local removedCount = 0
-    
-    for _, obj in ipairs(objects) do
-        if DoesEntityExist(obj) then
-            local objModel = GetEntityModel(obj)
-            local objCoords = GetEntityCoords(obj)
-            local dist = #(objCoords - coords)
-            
-            -- Only remove doors that are in our VaultDoors table or HeistState (ones we spawned)
-            local isOurDoor = false
-            for heistId, doorData in pairs(VaultDoors) do
-                if doorData.obj == obj or doorData.entity == obj then
-                    isOurDoor = true
-                    break
-                end
-            end
-            
-            -- Also check HeistState
-            if not isOurDoor then
-                for heistId, state in pairs(HeistState or {}) do
-                    if state.vaultObj == obj then
-                        isOurDoor = true
-                        break
-                    end
-                end
-            end
-            
-            -- Only delete if it's a prop door we spawned AND it's near our coordinates
-            if isOurDoor and (objModel == fleecaDoorHash or objModel == joaat('v_ilev_gb_vauldr')) and dist < 5.0 then
-                SetEntityAsMissionEntity(obj, true, true)
-                DeleteEntity(obj)
-                removedCount = removedCount + 1
-                debugPrint(('Removed prop vault door entity at %s (model: %d)'):format(tostring(objCoords), objModel))
-            end
-        end
-    end
-    
-    if removedCount > 0 then
-        debugPrint(('Removed %d prop vault door entity/entities'):format(removedCount))
-    end
-    
-    return removedCount
-end
+    local doorId = GetHashKey("fleeca_vaultdoor_" .. heistId)
+    fleecaDoorIds[heistId] = doorId
 
--- Find the existing default vault door entity (searches more thoroughly)
-local function FindDefaultVaultDoor(coords, heistId)
-    local objects = GetGamePool('CObject')
-    local foundDoor = nil
-    local foundCoords = nil
-    local closestDist = 999.0
-    
-    -- Search for the door - check within 10m radius and allow different Z levels
-    for _, obj in ipairs(objects) do
-        if DoesEntityExist(obj) then
-            local objModel = GetEntityModel(obj)
-            local objCoords = GetEntityCoords(obj)
-            local dist = #(vector2(objCoords.x, objCoords.y) - vector2(coords.x, coords.y))
-            
-            -- Check if it's a vault door model near our coordinates (allow different Z levels, wider search)
-            if (objModel == fleecaDoorHash or objModel == joaat('v_ilev_gb_vauldr')) and dist < 10.0 then
-                -- Check if it's NOT one of our spawned doors
-                local isOurDoor = false
-                for hid, doorData in pairs(VaultDoors) do
-                    if doorData.obj == obj or doorData.entity == obj then
-                        isOurDoor = true
-                        break
-                    end
-                end
-                
-                -- Also check HeistState for this specific heist
-                if not isOurDoor and heistId then
-                    if HeistState and HeistState[heistId] and HeistState[heistId].vaultObj == obj then
-                        isOurDoor = true
-                    end
-                end
-                
-                if not isOurDoor and dist < closestDist then
-                    foundDoor = obj
-                    foundCoords = objCoords
-                    closestDist = dist
-                    debugPrint(('Found default vault door at %s (model: %d, dist: %.2f)'):format(tostring(objCoords), objModel, dist))
-                end
-            end
-        end
-    end
-    
-    return foundDoor, foundCoords
-end
+    local pos = vector3(heist.vault.coords.x, heist.vault.coords.y, heist.vault.coords.z)
 
--- Request Fleeca bank interior/IPL
-local function RequestFleecaInterior()
-    -- Request the Fleeca bank interior (Legion Square)
-    -- These IPLs might not be the exact ones, but they're common bank interior IPLs
-    RequestIpl("v_int_bank")
-    RequestIpl("v_int_bank_vault")
-    
-    -- Also try requesting the interior by coordinates
-    local interiorId = GetInteriorAtCoords(148.025, -1044.364, 29.506)
-    if interiorId ~= 0 then
-        LoadInterior(interiorId)
-        while not IsInteriorReady(interiorId) do
-            Wait(100)
-        end
-        debugPrint(('Loaded interior ID: %d'):format(interiorId))
-    end
-    
-    -- Wait a bit for IPL to load
-    Wait(500)
-    
-    debugPrint('Requested Fleeca bank interior/IPL')
-end
-
--- Register and control Fleeca vault door using DoorSystem (controls the DEFAULT door, doesn't spawn props)
-local function RegisterFleecaDoor(heistId, coords)
-    local doorId = getDoorId(heistId)
-    
-    -- CRITICAL: Request interior first (door might be part of MLO/IPL)
-    RequestFleecaInterior()
-    
-    -- CRITICAL: Remove only PROP doors we spawned (not the default door)
-    RemovePropVaultDoors(coords)
-    Wait(200)
-    
-    -- Try multiple times to find the door (it might load later with the interior)
-    local defaultDoor, defaultCoords = nil, nil
-    for attempt = 1, 10 do
-        defaultDoor, defaultCoords = FindDefaultVaultDoor(coords, heistId)
-        if defaultDoor and defaultCoords then
-            debugPrint(('Found door on attempt %d'):format(attempt))
-            break
-        end
-        Wait(300) -- Wait for interior/doors to load
-    end
-    
-    -- Use the actual door coordinates if found, otherwise use config coordinates
-    local doorCoords = defaultCoords or coords
-    
-    -- If we found the door, use its exact coordinates; otherwise try multiple Z levels
-    if not defaultCoords then
-        -- Try common Z offsets for Fleeca doors
-        local zOffsets = {0.0, 1.0, 1.16, 1.2, -1.0, -0.5}
-        for _, zOffset in ipairs(zOffsets) do
-            local testCoords = vector3(coords.x, coords.y, coords.z + zOffset)
-            local testDoor, testCoords = FindDefaultVaultDoor(testCoords, heistId)
-            if testDoor and testCoords then
-                defaultCoords = testCoords
-                doorCoords = testCoords
-                debugPrint(('Found door with Z offset %.2f: %s'):format(zOffset, tostring(testCoords)))
-                break
-            end
-        end
-    end
-    
-    -- If still no door found, the door might already be in DoorSystem - try to use it directly
-    if not defaultDoor then
-        debugPrint(('WARNING: Could not find vault door entity. Attempting to register with DoorSystem anyway...'))
-        debugPrint(('This may work if the door is already part of the game\'s door system.'))
-    end
-    
-    -- Remove from DoorSystem first
     RemoveDoorFromSystem(doorId)
-    RemoveDoorFromSystem(fleecaDoorHash)
-    Wait(100)
-    
-    -- Register the DEFAULT door in DoorSystem using its actual coordinates
-    AddDoorToSystem(
-        doorId,
-        fleecaDoorHash,
-        doorCoords.x,
-        doorCoords.y,
-        doorCoords.z,
-        false, false, false
-    )
-    
-    Wait(500) -- Give DoorSystem more time to register
-    
-    -- Set automatic rate for smooth animation
+    Wait(50)
+
+    AddDoorToSystem(doorId, FLEECA_VAULT_MODEL, pos.x, pos.y, pos.z, false, false, false)
+    DoorSystemSetDoorState(doorId, 1, true, true)  -- locked
+    DoorSystemSetOpenRatio(doorId, 0.0, true, false)
+
+    return doorId
+end
+
+-- 3.3 Clean opening function
+local function OpenFleecaVaultDoor(heistId)
+    local doorId = fleecaDoorIds[heistId]
+    if not doorId then return end
+
+    DoorSystemSetDoorState(doorId, 4, true, true)
     DoorSystemSetAutomaticRate(doorId, 10.0, false, false)
-    
-    -- Set door to opening state first (required by DoorSystem)
-    DoorSystemSetDoorState(doorId, 4, false, false)
-    Wait(100)
-    
-    -- Force it shut & locked
-    DoorSystemSetDoorState(doorId, 1, false, false)
-    DoorSystemSetOpenRatio(doorId, 0.0, false, false)
-    
-    -- Verify door state
-    local doorState = DoorSystemGetDoorState(doorId)
-    local openRatio = DoorSystemGetOpenRatio(doorId)
-    
-    if defaultDoor then
-        debugPrint(('Fleeca vault door registered (DEFAULT door found) for heist: %s at %s (state: %d, ratio: %.2f)'):format(heistId, tostring(doorCoords), doorState, openRatio))
-    else
-        debugPrint(('Fleeca vault door registered (using config coords - door not found) for heist: %s at %s (state: %d, ratio: %.2f)'):format(heistId, tostring(doorCoords), doorState, openRatio))
-        debugPrint(('NOTE: Door entity not found, but DoorSystem registration attempted. Door may appear when you enter the bank interior.'))
+
+    for r = 0.0, 1.0, 0.02 do
+        DoorSystemSetOpenRatio(doorId, r, true, false)
+        Wait(15)
     end
+
+    DoorSystemSetDoorState(doorId, 6, true, true)
 end
 
--- Open the vault door after drilling
-function OpenVaultDoor(heistId)
-    local doorId = getDoorId(heistId)
-    
-    debugPrint(('=== OPENING VAULT DOOR ==='))
-    debugPrint(('Heist ID: %s, Door ID: %d'):format(heistId, doorId))
-    
-    -- First, try to find the actual door entity
-    local heist = Config.Heists[heistId]
-    if not heist or not heist.vault or not heist.vault.coords then
-        debugPrint(('ERROR: Heist config not found for: %s'):format(heistId))
-        return
-    end
-    
-    local vaultCoords = vecFromTable(heist.vault.coords)
-    
-    -- Find the door entity
-    local doorEntity, doorCoords = FindDefaultVaultDoor(vaultCoords, heistId)
-    
-    local actualDoorId = doorId
-    local useEntityHash = false
-    
-    if doorEntity and DoesEntityExist(doorEntity) then
-        debugPrint(('Found door entity: %d at %s'):format(doorEntity, tostring(doorCoords)))
-        
-        -- Try to get the door's hash if it's already in DoorSystem
-        local entityModel = GetEntityModel(doorEntity)
-        
-        -- Register the door using its actual coordinates
-        RemoveDoorFromSystem(doorId)
-        RemoveDoorFromSystem(fleecaDoorHash)
-        RemoveDoorFromSystem(entityModel) -- Remove by model hash too
-        Wait(100)
-        
-        if doorCoords then
-            -- Try multiple approaches
-            -- Approach 1: Use custom door ID
-            AddDoorToSystem(
-                doorId,
-                fleecaDoorHash,
-                doorCoords.x,
-                doorCoords.y,
-                doorCoords.z,
-                false, false, false
-            )
-            
-            -- Approach 2: Also register with model hash (in case custom ID doesn't work)
-            AddDoorToSystem(
-                entityModel,
-                fleecaDoorHash,
-                doorCoords.x,
-                doorCoords.y,
-                doorCoords.z,
-                false, false, false
-            )
-            
-            Wait(500) -- Give more time for registration
-            
-            -- Set automatic rate for smooth animation
-            DoorSystemSetAutomaticRate(doorId, 10.0, false, false)
-            DoorSystemSetAutomaticRate(entityModel, 10.0, false, false)
-        end
-    else
-        debugPrint(('WARNING: Door entity not found, using config coordinates'))
-        -- Re-register with config coords
-        RegisterFleecaDoor(heistId, vaultCoords)
-        Wait(500)
-    end
-    
-    -- Check if door is registered in DoorSystem
-    local doorState = DoorSystemGetDoorState(doorId)
-    local openRatio = DoorSystemGetOpenRatio(doorId)
-    
-    debugPrint(('Door state before opening (custom ID): %d, ratio: %.2f'):format(doorState, openRatio))
-    
-    -- Try opening with custom door ID first
-    if doorState ~= 0 or openRatio ~= 0.0 then
-        debugPrint(('Opening door with custom ID: %d'):format(doorId))
-        
-        -- Set to OPENING state first (required by DoorSystem)
-        DoorSystemSetDoorState(doorId, 4, false, false)
-        Wait(100)
-        
-        -- Unlock door
-        DoorSystemSetDoorState(doorId, 0, false, false)
-        Wait(100)
-        
-        -- Set automatic rate for smooth animation
-        DoorSystemSetAutomaticRate(doorId, 10.0, false, false)
-        
-        -- Animate open smoothly
-        debugPrint(('Animating door open with doorId: %d...'):format(doorId))
-        for i = 0.0, 1.0, 0.01 do
-            DoorSystemSetOpenRatio(doorId, i, false, false)
-            Wait(10)
-        end
-        
-        -- Final state: fully open
-        DoorSystemSetDoorState(doorId, 6, false, false)
-    else
-        -- Try using model hash directly
-        debugPrint(('Custom ID not working, trying model hash: %d'):format(fleecaDoorHash))
-        
-        local modelHashId = fleecaDoorHash
-        AddDoorToSystem(
-            modelHashId,
-            fleecaDoorHash,
-            vaultCoords.x,
-            vaultCoords.y,
-            vaultCoords.z,
-            false, false, false
-        )
-        Wait(500)
-        
-        -- Set automatic rate
-        DoorSystemSetAutomaticRate(modelHashId, 10.0, false, false)
-        
-        -- Set to OPENING state first
-        DoorSystemSetDoorState(modelHashId, 4, false, false)
-        Wait(100)
-        
-        -- Unlock
-        DoorSystemSetDoorState(modelHashId, 0, false, false)
-        Wait(100)
-        
-        -- Animate open
-        for i = 0.0, 1.0, 0.01 do
-            DoorSystemSetOpenRatio(modelHashId, i, false, false)
-            Wait(10)
-        end
-        
-        DoorSystemSetDoorState(modelHashId, 6, false, false)
-        debugPrint(('Attempted to open door using model hash: %d'):format(modelHashId))
-    end
-    
-    -- Verify final state
-    local finalState = DoorSystemGetDoorState(doorId)
-    local finalRatio = DoorSystemGetOpenRatio(doorId)
-    
-    debugPrint(('Vault door opened for heist: %s (final state: %d, ratio: %.2f)'):format(heistId, finalState, finalRatio))
-    debugPrint(('=== END OPENING VAULT DOOR ==='))
+-- 3.4 Clean closing/reset function
+local function ResetFleecaVaultDoor(heistId)
+    local doorId = fleecaDoorIds[heistId]
+    if not doorId then return end
+
+    DoorSystemSetDoorState(doorId, 1, true, true)
+    DoorSystemSetOpenRatio(doorId, 0.0, true, false)
 end
 
--- Close the vault door
-function CloseVaultDoor(heistId)
-    local doorId = getDoorId(heistId)
-    
-    DoorSystemSetDoorState(doorId, 1, false, false)
-    DoorSystemSetOpenRatio(doorId, 0.0, false, false)
-    
-    debugPrint(('Vault door closed for heist: %s'):format(heistId))
-end
-
--- ============================================================
--- B) VAULT DOOR SYSTEM
--- ============================================================
-
--- 2️⃣ REGISTER VAULT DOOR USING DOORSYSTEM
-RegisterNetEvent("cs_heistmaster:client:spawnVaultDoor", function(heistId, coords, heading, isOpen)
-    local vaultCoords = vecFromTable(coords)
-    
-    -- Register door in DoorSystem
-    RegisterFleecaDoor(heistId, vaultCoords)
-    
-    -- If door should be open, open it
-    if isOpen then
-        Wait(100) -- Small delay to ensure door is registered
-        OpenVaultDoor(heistId)
-    end
-    
-    debugPrint(('Vault door registered for heist: %s (open: %s)'):format(heistId, tostring(isOpen)))
+-- Client event handlers
+RegisterNetEvent("cs_heistmaster:client:openVaultDoor", function(id)
+    RegisterFleecaVaultDoor(id)
+    Wait(300)
+    OpenFleecaVaultDoor(id)
 end)
 
--- 3️⃣ OPEN DOOR AFTER DRILLING
-RegisterNetEvent("cs_heistmaster:client:openVaultDoor", function(heistId)
-    debugPrint(('Received openVaultDoor event for heist: %s'):format(heistId))
-    
-    -- Make sure door is registered first (in case it wasn't found earlier)
-    local heist = Config.Heists[heistId]
-    if heist and heist.vault and heist.vault.coords then
-        local vaultCoords = vecFromTable(heist.vault.coords)
-        -- Re-register door to ensure it's in DoorSystem
-        RegisterFleecaDoor(heistId, vaultCoords)
-        Wait(500) -- Give it time to register
-    end
-    
-    -- Now open the door
-    OpenVaultDoor(heistId)
+RegisterNetEvent("cs_heistmaster:client:resetVaultDoor", function(id)
+    ResetFleecaVaultDoor(id)
 end)
 
--- Close vault door event
-RegisterNetEvent("cs_heistmaster:client:closeVaultDoor", function(heistId)
-    CloseVaultDoor(heistId)
-end)
-
--- Legacy openVaultDoor handler (for compatibility)
-RegisterNetEvent("cs_heistmaster:client:openVaultDoor_legacy", function(heistId)
-    debugPrint(('Attempting to open vault door for heist: %s'):format(heistId))
-    
-    -- FIX: Use HeistState for vault door reference
-    local vaultObj = HeistState[heistId] and HeistState[heistId].vaultObj
-    if not vaultObj or not DoesEntityExist(vaultObj) then
-        -- Fallback to legacy VaultDoors
-        local door = VaultDoors[heistId]
-        if door and DoesEntityExist(door.obj) then
-            vaultObj = door.obj
-        else
-            debugPrint(('ERROR: Vault door object not found for heist: %s'):format(heistId))
-            -- Try to spawn it if it doesn't exist
-            local heist = Heists[heistId]
-            if heist and heist.vault and heist.vault.coords then
-                TriggerServerEvent("cs_heistmaster:server:syncVaultDoors")
-                Wait(500) -- Wait for sync
-                vaultObj = HeistState[heistId] and HeistState[heistId].vaultObj
-                if not vaultObj or not DoesEntityExist(vaultObj) then
-                    debugPrint(('ERROR: Failed to spawn vault door for heist: %s'):format(heistId))
-                    return
-                end
-            else
-                return
-            end
-        end
-    end
-    
-    local door = VaultDoors[heistId]
-    local startHeading = door and door.heading or 160.0
-    
-    debugPrint(('Opening vault door: startHeading=%s, currentHeading=%s'):format(startHeading, GetEntityHeading(vaultObj)))
-    
-    -- CRITICAL FIX: Disable collision BEFORE opening to allow passage
-    SetEntityCollision(vaultObj, false, false)
-    
-    -- FIX: Unfreeze door for animation
-    FreezeEntityPosition(vaultObj, false)
-    
-    -- FIX: Use SetEntityHeading with smooth rotation for visible door opening
-    -- Rotate door 90-100 degrees to create opening (vault doors typically swing open)
-    local targetHeading = startHeading - 100.0 -- Rotate 100 degrees to open
-    local currentHeading = GetEntityHeading(vaultObj)
-    local rotationSteps = 50
-    local headingStep = (targetHeading - currentHeading) / rotationSteps
-    
-    -- Smooth rotation animation in a thread to avoid blocking
-    CreateThread(function()
-        for i = 1, rotationSteps do
-            if not DoesEntityExist(vaultObj) then break end
-            local newHeading = currentHeading + (headingStep * i)
-            SetEntityHeading(vaultObj, newHeading)
-            Wait(20) -- 20ms per step = 1 second total animation
-        end
-        
-        -- Ensure final heading is set correctly
-        if DoesEntityExist(vaultObj) then
-            SetEntityHeading(vaultObj, targetHeading)
-            -- CRITICAL: Keep collision disabled so players can walk through
-            SetEntityCollision(vaultObj, false, false)
-            -- Keep door unfrozen so it doesn't interfere
-            FreezeEntityPosition(vaultObj, false)
-        end
-        
-        -- Update door state
-        if door then
-            door.open = true
-        end
-        
-        -- Effects
-        local coords = GetEntityCoords(vaultObj)
-        UseParticleFxAssetNextCall("core")
-        StartParticleFxNonLoopedAtCoord("ent_dst_electrical", coords.x, coords.y, coords.z, 0.0, 0.0, 0.0, 1.0, false, false, false)
-        PlaySoundFromCoord(-1, "VAULT_DOOR_OPEN", coords.x, coords.y, coords.z, "dlc_heist_fleeca_bank_door_sounds", false, 1.0, false)
-        ShakeGameplayCam("SMALL_EXPLOSION_SHAKE", 0.5)
-        
-        debugPrint(('Vault door opened successfully (collision disabled): %s'):format(heistId))
-    end)
-end)
-
-RegisterNetEvent("cs_heistmaster:client:requestVaultSync", function()
-    TriggerServerEvent("cs_heistmaster:server:syncVaultDoors")
-end)
-
--- 5️⃣ RESYNC DOOR FOR JOINING PLAYERS
+-- Register doors on resource start
 CreateThread(function()
-    Wait(5000)
-    TriggerServerEvent("cs_heistmaster:server:syncVaultDoors")
+    Wait(2000)
+    for heistId, heist in pairs(Config.Heists) do
+        if heist.heistType == "fleeca" and heist.vault then
+            RegisterFleecaVaultDoor(heistId)
+        end
+    end
 end)
-
--- DEBUG: Manual command to force spawn vault door (for testing)
-RegisterCommand('spawnvaultdoor', function(source, args)
-    local heistId = args[1] or 'fleeca_legion'
-    local heist = Config.Heists[heistId]
-    
-    if not heist then
-        print('^1[DEBUG] Heist not found: ' .. heistId .. '^7')
-        return
-    end
-    
-    if not heist.vault or not heist.vault.coords then
-        print('^1[DEBUG] Heist has no vault config: ' .. heistId .. '^7')
-        return
-    end
-    
-    print('^2[DEBUG] Force spawning vault door for: ' .. heistId .. '^7')
-    
-    -- Force spawn using the spawnVaultDoor event
-    local doorModel = heist.vault.doorModel or 'v_ilev_gb_vauldr'
-    TriggerEvent('cs_heistmaster:client:spawnVaultDoor', heistId, heist.vault.coords, heist.vault.heading or 160.0, doorModel, false)
-end, false)
 
 -- ============================================================
 -- D) GUARDS SYSTEM
@@ -1961,7 +1504,7 @@ RegisterNetEvent('cs_heistmaster:client:startHeist', function(heistId, heistData
         local vaultCoords = vecFromTable(heistData.vault.coords)
         
         -- Register door in DoorSystem (ensures it's locked and closed)
-        RegisterFleecaDoor(heistId, vaultCoords)
+        RegisterFleecaVaultDoor(heistId)
     end
     
     -- Spawn step objects with target options
@@ -2056,120 +1599,17 @@ local function SpawnAllHeistElements()
             end
         end
         
-        -- For fleeca banks: Remove any prop doors we may have spawned, use DEFAULT door via DoorSystem
-        if heist.heistType == 'fleeca' and heist.vault and heist.vault.coords then
-            -- Remove any prop doors we spawned (they shouldn't exist, but clean up just in case)
-            local vaultCoords = vecFromTable(heist.vault.coords)
-            RemovePropVaultDoors(vaultCoords)
-            
-            -- Clear any references to prop doors
-            if HeistState[heistId] then
-                HeistState[heistId].vaultObj = nil
-            end
-            VaultDoors[heistId] = nil
-            
-            debugPrint(('SpawnAllHeistElements: Using DEFAULT vault door for heist %s (no props spawned)'):format(heistId))
+        -- For fleeca banks: Register door via DoorSystem
+        if heist.heistType == 'fleeca' and heist.vault then
+            RegisterFleecaVaultDoor(heistId)
         end
     end
     
     SpawnAllInProgress = false
 end
 
--- 4️⃣ REGISTER DOORS IMMEDIATELY ON RESOURCE START (BEFORE GAME LOADS DOORS)
-CreateThread(function()
-    -- Wait for game and interiors to load
-    Wait(3000)
-    
-    -- Register doors - try multiple times as interiors may load later
-    for attempt = 1, 3 do
-        for heistId, hData in pairs(Config.Heists) do
-            if hData.heistType == "fleeca" and hData.vault and hData.vault.coords then
-                local vaultCoords = vecFromTable(hData.vault.coords)
-                RegisterFleecaDoor(heistId, vaultCoords)
-            end
-        end
-        if attempt < 3 then
-            Wait(2000) -- Wait between attempts
-        end
-    end
-    
-    -- Continuous check to ensure doors stay registered and remove any respawned doors
-    while true do
-        Wait(5000) -- Check every 5 seconds (less frequent to avoid spam)
-        
-        local playerCoords = GetEntityCoords(PlayerPedId())
-        
-        -- Check all Fleeca heists
-        for heistId, heist in pairs(Config.Heists) do
-            if heist.heistType == 'fleeca' and heist.vault and heist.vault.coords then
-                local vaultCoords = vecFromTable(heist.vault.coords)
-                local dist = #(playerCoords - vaultCoords)
-                
-                -- If player is within 50 meters of the bank, ensure door is registered and remove any prop duplicates
-                if dist < 50.0 then
-                    -- Remove any prop doors we may have spawned
-                    RemovePropVaultDoors(vaultCoords)
-                    -- Re-register DEFAULT door to ensure it's controlled (only once per proximity check)
-                    RegisterFleecaDoor(heistId, vaultCoords)
-                end
-            end
-        end
-    end
-end)
 
 -- DEBUG: Command to manually find and register vault door
-RegisterCommand('findvaultdoor', function(source, args)
-    local heistId = args[1] or 'fleeca_legion'
-    local heist = Config.Heists[heistId]
-    
-    if not heist then
-        print('^1[DEBUG] Heist not found: ' .. heistId .. '^7')
-        return
-    end
-    
-    if not heist.vault or not heist.vault.coords then
-        print('^1[DEBUG] Heist has no vault config: ' .. heistId .. '^7')
-        return
-    end
-    
-    print('^2[DEBUG] Searching for vault door for: ' .. heistId .. '^7')
-    
-    local vaultCoords = vecFromTable(heist.vault.coords)
-    local playerCoords = GetEntityCoords(PlayerPedId())
-    
-    print(string.format('^3[DEBUG] Config coords: %s^7', tostring(vaultCoords)))
-    print(string.format('^3[DEBUG] Player coords: %s^7', tostring(playerCoords)))
-    print(string.format('^3[DEBUG] Distance: %.2f^7', #(playerCoords - vaultCoords)))
-    
-    -- Search for door
-    local objects = GetGamePool('CObject')
-    local foundDoors = {}
-    
-    for _, obj in ipairs(objects) do
-        if DoesEntityExist(obj) then
-            local objModel = GetEntityModel(obj)
-            local objCoords = GetEntityCoords(obj)
-            local dist = #(objCoords - vaultCoords)
-            
-            if (objModel == fleecaDoorHash or objModel == joaat('v_ilev_gb_vauldr')) and dist < 20.0 then
-                table.insert(foundDoors, {entity = obj, coords = objCoords, dist = dist, model = objModel})
-                print(string.format('^2[DEBUG] Found door at %s (model: %d, dist: %.2f)^7', tostring(objCoords), objModel, dist))
-            end
-        end
-    end
-    
-    if #foundDoors == 0 then
-        print('^1[DEBUG] No vault doors found near coordinates!^7')
-        print('^3[DEBUG] Try going inside the bank - the door might be part of an interior that loads when you enter.^7')
-    else
-        print(string.format('^2[DEBUG] Found %d door(s)^7', #foundDoors))
-        -- Register the closest one
-        table.sort(foundDoors, function(a, b) return a.dist < b.dist end)
-        local closest = foundDoors[1]
-        print(string.format('^2[DEBUG] Registering closest door at %s^7', tostring(closest.coords)))
-        RegisterFleecaDoor(heistId, closest.coords)
-    end
-end, false)
 
 -- Initial spawn (only once on resource start)
 local hasInitialSpawned = false
@@ -2186,7 +1626,6 @@ AddEventHandler('QBCore:Client:OnPlayerLoaded', function()
     Wait(3000) -- Wait for everything to load
     -- Only spawn if NPCs are missing (SpawnAllHeistElements checks existence)
     SpawnAllHeistElements()
-    TriggerServerEvent("cs_heistmaster:server:syncVaultDoors")
 end)
 
 -- Also handle qbx_core if used
@@ -2194,7 +1633,6 @@ AddEventHandler('qbx_core:client:playerLoaded', function()
     Wait(3000) -- Wait for everything to load
     -- Only spawn if NPCs are missing (SpawnAllHeistElements checks existence)
     SpawnAllHeistElements()
-    TriggerServerEvent("cs_heistmaster:server:syncVaultDoors")
 end)
 
 -- Respawn after cleanup
@@ -2252,85 +1690,9 @@ RegisterNetEvent('cs_heistmaster:client:cleanupHeist', function(heistId)
             HeistState[heistId].hiddenDoors = nil
         end
         
-        -- For bank heists, reset door to closed state instead of deleting
-        local vaultObj = HeistState[heistId] and HeistState[heistId].vaultObj
-        if not vaultObj or not DoesEntityExist(vaultObj) then
-            -- Fallback to legacy reference
-            vaultObj = VaultDoors[heistId] and VaultDoors[heistId].obj
-        end
-        
-        if vaultObj and DoesEntityExist(vaultObj) then
-            -- Reset door to closed state
-            local door = VaultDoors[heistId]
-            local startHeading = door and door.heading or 160.0
-            
-            -- Reset heading to original closed position
-            SetEntityHeading(vaultObj, startHeading)
-            
-            -- Re-enable collision (door is closed)
-            SetEntityCollision(vaultObj, true, true)
-            
-            -- Freeze door in closed position
-            FreezeEntityPosition(vaultObj, true)
-            
-            -- Update door state
-            if door then
-                door.open = false
-            end
-            
-            debugPrint(('Vault door reset to closed state for heist: %s'):format(heistId))
-        end
-    else
-        -- For other heist types, delete the door if it exists
-        if HeistState[heistId] and HeistState[heistId].vaultObj then
-            local vaultObj = HeistState[heistId].vaultObj
-            if DoesEntityExist(vaultObj) then
-                SetEntityCollision(vaultObj, true, true)
-                DeleteEntity(vaultObj)
-                debugPrint(('Vault door deleted during cleanup for heist: %s'):format(heistId))
-            end
-            HeistState[heistId].vaultObj = nil
-        end
-        
-        -- Also cleanup legacy VaultDoors reference and delete if exists
-        if VaultDoors[heistId] then
-            local legacyDoor = VaultDoors[heistId].obj
-            if legacyDoor and DoesEntityExist(legacyDoor) then
-                SetEntityCollision(legacyDoor, true, true)
-                DeleteEntity(legacyDoor)
-                debugPrint(('Legacy vault door deleted during cleanup for heist: %s'):format(heistId))
-            end
-            VaultDoors[heistId] = nil
-        end
-    end
-    
-    -- Heist Cleanup - Close vault door for Fleeca heists
-    if heist and heist.heistType == 'fleeca' then
-        -- Close the door using DoorSystem (controls DEFAULT door)
-        CloseVaultDoor(heistId)
-        
-        -- Cleanup any prop door references (shouldn't exist, but clean up just in case)
-        if heist.vault and heist.vault.coords then
-            local vaultCoords = vecFromTable(heist.vault.coords)
-            RemovePropVaultDoors(vaultCoords)
-        end
-        
-        -- Clear references to prop doors
-        if VaultDoors[heistId] then
-            if VaultDoors[heistId].obj and DoesEntityExist(VaultDoors[heistId].obj) then
-                DeleteEntity(VaultDoors[heistId].obj)
-            end
-            if VaultDoors[heistId].entity and DoesEntityExist(VaultDoors[heistId].entity) then
-                DeleteEntity(VaultDoors[heistId].entity)
-            end
-            VaultDoors[heistId] = nil
-        end
-        if VaultDoor and DoesEntityExist(VaultDoor) then
-            DeleteEntity(VaultDoor)
-            VaultDoor = nil
-        end
-        if HeistState[heistId] then
-            HeistState[heistId].vaultObj = nil
+        -- For Fleeca heists, reset door to closed state
+        if heist and heist.heistType == 'fleeca' then
+            ResetFleecaVaultDoor(heistId)
         end
     end
     

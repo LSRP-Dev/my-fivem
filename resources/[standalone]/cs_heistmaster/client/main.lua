@@ -681,8 +681,8 @@ RegisterNetEvent('cs_heistmaster:client:spawnVaultDoor', function(heistId, coord
     RequestModel(model)
     while not HasModelLoaded(model) do Wait(0) end
     
-    -- Use CreateObjectNoOffset for precise positioning, with Z offset to align with vault entrance
-    local door = CreateObjectNoOffset(model, coords.x, coords.y, coords.z - 1.0, false, false, false)
+    -- Use CreateObjectNoOffset for precise positioning - use exact coordinates from config
+    local door = CreateObjectNoOffset(model, coords.x, coords.y, coords.z, false, false, false)
     SetEntityHeading(door, heading or 160.0)
     SetEntityCollision(door, true, true)
     FreezeEntityPosition(door, true)
@@ -748,8 +748,8 @@ RegisterNetEvent('cs_heistmaster:client:resetVaultDoor', function(heistId, coord
     RequestModel(model)
     while not HasModelLoaded(model) do Wait(0) end
     
-    -- Use CreateObjectNoOffset for precise positioning, with Z offset to align with vault entrance
-    local door = CreateObjectNoOffset(model, coords.x, coords.y, coords.z - 1.0, false, false, false)
+    -- Use CreateObjectNoOffset for precise positioning - use exact coordinates from config
+    local door = CreateObjectNoOffset(model, coords.x, coords.y, coords.z, false, false, false)
     SetEntityHeading(door, heist.vault.heading or heading or 160.0)
     SetEntityCollision(door, true, true)
     FreezeEntityPosition(door, true)

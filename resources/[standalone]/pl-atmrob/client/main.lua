@@ -78,26 +78,32 @@ for _, model in ipairs(Config.AtmModels) do
             return not IsATMAlreadyRobbed(coords)
         end
         if Config.EnableHacking then
-            table.insert(options, {
+            local hackOption = {
                 event = 'pl_atmrobbery_hack',
                 label = locale('hack_atm_label'),
                 icon = 'fas fa-laptop-code',
                 model = model,
                 distance = 2,
-                items = Config.HackingItem,
                 canInteract = function(entity) return canInteractGeneric(entity, 'hack') end
-            })
+            }
+            if Config.HackingItem and Config.HackingItem ~= false then
+                hackOption.items = Config.HackingItem
+            end
+            table.insert(options, hackOption)
         end
         if Config.EnableDrilling then
-            table.insert(options, {
+            local drillOption = {
                 event = 'pl_atmrobbery_drill',
                 label = locale('drill_atm_label'),
                 icon = 'fas fa-tools',
                 model = model,
                 distance = 2,
-                items = Config.DrillItem,
                 canInteract = function(entity) return canInteractGeneric(entity, 'drill') end
-            })
+            }
+            if Config.DrillItem and Config.DrillItem ~= false then
+                drillOption.items = Config.DrillItem
+            end
+            table.insert(options, drillOption)
         end
         if Config.EnableRopeRobbery and (model == 'prop_fleeca_atm' or model == 'prop_atm_02' or model == 'prop_atm_03') then
             table.insert(options, {
@@ -129,26 +135,32 @@ for _, model in ipairs(Config.AtmModels) do
             return not IsATMAlreadyRobbed(coords)
         end
         if Config.EnableHacking then
-            table.insert(options, {
+            local hackOption = {
                 type = "client",
                 event = 'pl_atmrobbery_hack',
                 icon = 'fas fa-laptop-code',
                 label = locale('hack_atm_label'),
                 model = model,
-                item = Config.HackingItem,
                 canInteract = function(entity) return canInteractGeneric(entity, 'hack') end
-            })
+            }
+            if Config.HackingItem and Config.HackingItem ~= false then
+                hackOption.item = Config.HackingItem
+            end
+            table.insert(options, hackOption)
         end
         if Config.EnableDrilling then
-            table.insert(options, {
+            local drillOption = {
                 type = "client",
                 event = 'pl_atmrobbery_drill',
                 icon = 'fas fa-tools',
                 label = locale('drill_atm_label'),
                 model = model,
-                item = Config.DrillItem,
                 canInteract = function(entity) return canInteractGeneric(entity, 'drill') end
-            })
+            }
+            if Config.DrillItem and Config.DrillItem ~= false then
+                drillOption.item = Config.DrillItem
+            end
+            table.insert(options, drillOption)
         end
         if Config.EnableRopeRobbery and (model == 'prop_fleeca_atm' or model == 'prop_atm_02' or model == 'prop_atm_03') then
             table.insert(options, {
@@ -357,19 +369,35 @@ AddEventHandler('pl_atmrobbery_drill', function(data)
                 if Config.Police.notify then
                     DispatchAlert()
                 end
-                TriggerEvent("Drilling:Start",function(success)
-                    if (success) then
+                -- Check if M-drilling resource is available
+                if GetResourceState('M-drilling') == 'started' then
+                    TriggerEvent("Drilling:Start",function(success)
+                        if (success) then
+                            TriggerServerEvent('pl_atmrobbery:MinigameResult', true, 'drill')
+                            if not Config.MoneyDrop then
+                                LootATM(atmCoords)
+                            else
+                                TriggerEvent('pl_atmrobbery_drill:success',entity, atmCoords, atmModel)
+                            end
+                        else
+                            TriggerServerEvent('pl_atmrobbery:MinigameResult', false, 'drill')
+                        end
+                    end)
+                else
+                    -- Fallback to ox_lib skillcheck if M-drilling is not available
+                    local success = lib.skillCheck({'easy', 'medium', { areaSize = 60, speedMultiplier = 1 }, 'medium'}, { 'w', 'a', 's', 'd' })
+                    if success then
                         TriggerServerEvent('pl_atmrobbery:MinigameResult', true, 'drill')
                         if not Config.MoneyDrop then
                             LootATM(atmCoords)
                         else
-
                             TriggerEvent('pl_atmrobbery_drill:success',entity, atmCoords, atmModel)
                         end
                     else
-                      TriggerServerEvent('pl_atmrobbery:MinigameResult', false, 'drill')
+                        TriggerServerEvent('pl_atmrobbery:MinigameResult', false, 'drill')
+                        TriggerEvent('pl_atmrobbery:notification', locale('failed_robbery'), 'error')
                     end
-                end)
+                end
             else
                 TriggerEvent('pl_atmrobbery:notification', locale('wait_robbery'),'error')
             end
@@ -459,31 +487,57 @@ RegisterNetEvent('pl_atmrobbery:StartMinigame', function(entity, atmCoords, atmM
     local minigame = Config.Hacking.Minigame
 
     if minigame == 'utk_fingerprint' then
-        TriggerEvent("utk_fingerprint:Start", 1, 6, 1, function(outcome, _)
+        if GetResourceState('utk_fingerprint') == 'started' then
+            TriggerEvent("utk_fingerprint:Start", 1, 6, 1, function(outcome, _)
+                handleResult(outcome == true)
+            end)
+        else
+            TriggerEvent('pl_atmrobbery:notification', 'utk_fingerprint resource is not available. Falling back to ox_lib.', 'error')
+            local outcome = lib.skillCheck({'easy', 'easy', { areaSize = 60, speedMultiplier = 1 }, 'easy'}, { 'w', 'a', 's', 'd' })
             handleResult(outcome == true)
-        end)
+        end
 
     elseif minigame == 'ox_lib' then
         local outcome = lib.skillCheck({'easy', 'easy', { areaSize = 60, speedMultiplier = 1 }, 'easy'}, { 'w', 'a', 's', 'd' })
         handleResult(outcome == true)
 
     elseif minigame == 'ps-ui-circle' then
-        exports['ps-ui']:Circle(function(success)
-            handleResult(success)
-        end, 4, 60)
+        if GetResourceState('ps-ui') == 'started' then
+            exports['ps-ui']:Circle(function(success)
+                handleResult(success)
+            end, 4, 60)
+        else
+            TriggerEvent('pl_atmrobbery:notification', 'ps-ui resource is not available. Falling back to ox_lib.', 'error')
+            local outcome = lib.skillCheck({'easy', 'easy', { areaSize = 60, speedMultiplier = 1 }, 'easy'}, { 'w', 'a', 's', 'd' })
+            handleResult(outcome == true)
+        end
 
     elseif minigame == 'ps-ui-maze' then
-        exports['ps-ui']:Maze(function(success)
-            handleResult(success)
-        end, 120)
+        if GetResourceState('ps-ui') == 'started' then
+            exports['ps-ui']:Maze(function(success)
+                handleResult(success)
+            end, 120)
+        else
+            TriggerEvent('pl_atmrobbery:notification', 'ps-ui resource is not available. Falling back to ox_lib.', 'error')
+            local outcome = lib.skillCheck({'easy', 'easy', { areaSize = 60, speedMultiplier = 1 }, 'easy'}, { 'w', 'a', 's', 'd' })
+            handleResult(outcome == true)
+        end
 
     elseif minigame == 'ps-ui-scrambler' then
-        exports['ps-ui']:Scrambler(function(success)
-            handleResult(success)
-        end, 'numeric', 120, 1)
+        if GetResourceState('ps-ui') == 'started' then
+            exports['ps-ui']:Scrambler(function(success)
+                handleResult(success)
+            end, 'numeric', 120, 1)
+        else
+            TriggerEvent('pl_atmrobbery:notification', 'ps-ui resource is not available. Falling back to ox_lib.', 'error')
+            local outcome = lib.skillCheck({'easy', 'easy', { areaSize = 60, speedMultiplier = 1 }, 'easy'}, { 'w', 'a', 's', 'd' })
+            handleResult(outcome == true)
+        end
 
     else
-        TriggerEvent('pl_atmrobbery:notification', 'Invalid minigame configuration.', 'error')
+        TriggerEvent('pl_atmrobbery:notification', 'Invalid minigame configuration. Falling back to ox_lib.', 'error')
+        local outcome = lib.skillCheck({'easy', 'easy', { areaSize = 60, speedMultiplier = 1 }, 'easy'}, { 'w', 'a', 's', 'd' })
+        handleResult(outcome == true)
     end
 end)
 

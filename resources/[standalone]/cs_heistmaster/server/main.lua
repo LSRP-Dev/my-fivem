@@ -439,9 +439,21 @@ RegisterNetEvent('cs_heistmaster:requestStart', function(heistId)
 
     -- PROMPT B: Initialize vault door state and spawn for Fleeca banks
     if heist.heistType == 'fleeca' and heist.vault and heist.vault.coords then
-        FleecaVaultState[heistId] = { spawned = true, open = false }
-        local doorModel = heist.vault.doorModel or 'v_ilev_gb_vauldr'
-        TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', -1, heistId, heist.vault.coords, heist.vault.heading or 160.0, doorModel, false)
+        if not FleecaVaultState[heistId] then
+            FleecaVaultState[heistId] = { spawned = true, open = false }
+        end
+        TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', -1, heistId, heist.vault.coords, heist.vault.heading or 160.0, false)
+    end
+end)
+
+-- Handle vault door spawn on heist start
+RegisterNetEvent("cs_heistmaster:server:spawnVaultDoorOnStart", function(heistId)
+    local heist = Heists[heistId]
+    if heist and heist.heistType == 'fleeca' and heist.vault and heist.vault.coords then
+        if not FleecaVaultState[heistId] then
+            FleecaVaultState[heistId] = { spawned = true, open = false }
+        end
+        TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', -1, heistId, heist.vault.coords, heist.vault.heading or 160.0, false)
     end
 end)
 
@@ -539,6 +551,15 @@ RegisterNetEvent('cs_heistmaster:finishHeist', function(heistId)
         HeistActivePlayers[heistId] = nil -- Clear active players tracking
         HeistCrew[heistId] = nil -- Clear crew tracking
         SafeOpened[heistId] = nil -- Clear safe opened tracking
+        
+        -- 6️⃣ RESET DOOR WHEN COOLDOWN EXPIRES
+        if heist.heistType == 'fleeca' and FleecaVaultState[heistId] then
+            FleecaVaultState[heistId].open = false
+            if heist.vault and heist.vault.coords then
+                TriggerClientEvent("cs_heistmaster:client:spawnVaultDoor", -1, heistId, heist.vault.coords, heist.vault.heading, false)
+            end
+        end
+        
         -- Reset to idle after cooldown
         setHeistState(heistId, "idle")
     end)
@@ -834,14 +855,13 @@ end)
 -- Debug command to force-start a heist
 ----------------------------------------------------------------
 
--- PROMPT B: Sync vault doors for late joiners
+-- 5️⃣ RESYNC DOOR FOR JOINING PLAYERS
 RegisterNetEvent('cs_heistmaster:server:syncVaultDoors', function()
     local src = source
-    for heistId, heist in pairs(Heists) do
-        if heist.heistType == 'fleeca' and heist.vault and heist.vault.coords then
-            local state = FleecaVaultState[heistId] or { spawned = false, open = false }
-            local doorModel = heist.vault.doorModel or 'v_ilev_gb_vauldr'
-            TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', src, heistId, heist.vault.coords, heist.vault.heading or 160.0, doorModel, state.open)
+    for heistId, state in pairs(FleecaVaultState) do
+        local h = Config.Heists[heistId]
+        if h and h.vault and h.vault.coords then
+            TriggerClientEvent('cs_heistmaster:client:spawnVaultDoor', src, heistId, h.vault.coords, h.vault.heading, state.open)
         end
     end
 end)

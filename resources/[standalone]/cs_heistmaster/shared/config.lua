@@ -84,8 +84,8 @@ Config.Heists = {
         start = { x = 148.9, y = -1040.1, z = 29.37 },
 
         vault = {
-            coords = { x = 149.93, y = -1047.52, z = 29.37 },
-            heading = 160.0,
+            coords = { x = 148.025, y = -1044.364, z = 29.506 },  -- Exact coordinates for Legion Square Fleeca
+            heading = 249.5,
             doorModel = 'v_ilev_gb_vauldr',  -- NEW: the vault door model to spawn
         },
 

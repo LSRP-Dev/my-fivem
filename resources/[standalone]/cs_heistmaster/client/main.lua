@@ -615,7 +615,37 @@ end
 local function RegisterFleecaDoor(heistId, coords)
     local doorId = getDoorId(heistId)
     
-    -- Register door in DoorSystem
+    -- Try to find existing door entity at this location
+    local objects = GetGamePool('CObject')
+    local existingDoor = nil
+    local existingDoorHash = nil
+    
+    for _, obj in ipairs(objects) do
+        if DoesEntityExist(obj) then
+            local objModel = GetEntityModel(obj)
+            local objCoords = GetEntityCoords(obj)
+            local dist = #(objCoords - coords)
+            
+            -- Check if it's a vault door model near our coordinates
+            if (objModel == fleecaDoorHash or objModel == joaat('v_ilev_gb_vauldr')) and dist < 2.0 then
+                existingDoor = obj
+                existingDoorHash = objModel
+                debugPrint(('Found existing vault door entity at %s (model: %d)'):format(tostring(objCoords), objModel))
+                break
+            end
+        end
+    end
+    
+    -- First, try to remove any existing door at this location
+    RemoveDoorFromSystem(doorId)
+    -- Also try removing by the model hash (in case it's already registered)
+    RemoveDoorFromSystem(fleecaDoorHash)
+    if existingDoorHash then
+        RemoveDoorFromSystem(existingDoorHash)
+    end
+    Wait(100)
+    
+    -- Register door in DoorSystem using the exact coordinates
     AddDoorToSystem(
         doorId,
         fleecaDoorHash,
@@ -625,11 +655,39 @@ local function RegisterFleecaDoor(heistId, coords)
         false, false, false
     )
     
-    -- Force it shut & locked
-    DoorSystemSetDoorState(doorId, 1, true, true)
-    DoorSystemSetOpenRatio(doorId, 0.0, true, false)
+    Wait(200) -- Give DoorSystem time to register
     
-    debugPrint(('Fleeca vault door registered for heist: %s'):format(heistId))
+    -- Set door to opening state first (required by DoorSystem)
+    DoorSystemSetDoorState(doorId, 4, false, false)
+    Wait(100)
+    
+    -- Force it shut & locked
+    DoorSystemSetDoorState(doorId, 1, false, false)
+    DoorSystemSetOpenRatio(doorId, 0.0, false, false)
+    
+    -- Verify door state
+    local doorState = DoorSystemGetDoorState(doorId)
+    local openRatio = DoorSystemGetOpenRatio(doorId)
+    
+    debugPrint(('Fleeca vault door registered for heist: %s at %s (state: %d, ratio: %.2f)'):format(heistId, tostring(coords), doorState, openRatio))
+    
+    -- If we found an existing door entity, also try to control it directly
+    if existingDoor and DoesEntityExist(existingDoor) then
+        -- Try to add the existing door to our system
+        local existingDoorCoords = GetEntityCoords(existingDoor)
+        AddDoorToSystem(
+            existingDoorHash or fleecaDoorHash,
+            existingDoorHash or fleecaDoorHash,
+            existingDoorCoords.x,
+            existingDoorCoords.y,
+            existingDoorCoords.z,
+            false, false, false
+        )
+        Wait(100)
+        DoorSystemSetDoorState(existingDoorHash or fleecaDoorHash, 1, false, false)
+        DoorSystemSetOpenRatio(existingDoorHash or fleecaDoorHash, 0.0, false, false)
+        debugPrint(('Also controlled existing door entity for heist: %s'):format(heistId))
+    end
 end
 
 -- Open the vault door after drilling
@@ -637,16 +695,16 @@ function OpenVaultDoor(heistId)
     local doorId = getDoorId(heistId)
     
     -- Unlock door
-    DoorSystemSetDoorState(doorId, 0, true, true)
+    DoorSystemSetDoorState(doorId, 0, false, false)
     
     -- Animate open
     for i = 0.0, 1.0, 0.01 do
-        DoorSystemSetOpenRatio(doorId, i, true, false)
+        DoorSystemSetOpenRatio(doorId, i, false, false)
         Wait(10)
     end
     
     -- Final state: fully open
-    DoorSystemSetDoorState(doorId, 6, true, true)
+    DoorSystemSetDoorState(doorId, 6, false, false)
     
     debugPrint(('Vault door opened for heist: %s'):format(heistId))
 end
@@ -655,8 +713,8 @@ end
 function CloseVaultDoor(heistId)
     local doorId = getDoorId(heistId)
     
-    DoorSystemSetDoorState(doorId, 1, true, true)
-    DoorSystemSetOpenRatio(doorId, 0.0, true, false)
+    DoorSystemSetDoorState(doorId, 1, false, false)
+    DoorSystemSetOpenRatio(doorId, 0.0, false, false)
     
     debugPrint(('Vault door closed for heist: %s'):format(heistId))
 end
@@ -1810,10 +1868,28 @@ local function SpawnAllHeistElements()
     SpawnAllInProgress = false
 end
 
--- Early door removal: Remove original doors when player is near Fleeca banks
+-- 4️⃣ REGISTER DOORS IMMEDIATELY ON RESOURCE START (BEFORE GAME LOADS DOORS)
 CreateThread(function()
+    -- Register doors immediately, don't wait
+    for heistId, hData in pairs(Config.Heists) do
+        if hData.heistType == "fleeca" and hData.vault and hData.vault.coords then
+            local vaultCoords = vecFromTable(hData.vault.coords)
+            RegisterFleecaDoor(heistId, vaultCoords)
+        end
+    end
+    
+    -- Also register again after a short delay (in case config loads later)
+    Wait(1000)
+    for heistId, hData in pairs(Config.Heists) do
+        if hData.heistType == "fleeca" and hData.vault and hData.vault.coords then
+            local vaultCoords = vecFromTable(hData.vault.coords)
+            RegisterFleecaDoor(heistId, vaultCoords)
+        end
+    end
+    
+    -- Continuous check to ensure doors stay registered
     while true do
-        Wait(2000) -- Check every 2 seconds
+        Wait(5000) -- Check every 5 seconds
         
         local playerCoords = GetEntityCoords(PlayerPedId())
         
@@ -1825,7 +1901,7 @@ CreateThread(function()
                 
                 -- If player is within 50 meters of the bank, ensure door is registered
                 if dist < 50.0 then
-                    -- Register door if not already registered
+                    -- Re-register door to ensure it's controlled
                     RegisterFleecaDoor(heistId, vaultCoords)
                 end
             end

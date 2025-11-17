@@ -482,10 +482,10 @@ Config.lasersExtra = {
     alertDispatch = true,
 
     -- Whether the lasers should make players ragdoll (fall over) when touched
-    forceRagdoll = false,
+    forceRagdoll = true,
 
     -- Set to 0 if you want lasers to not deal any damage to the players
-    damage = 5
+    damage = 10
 }
 
 Config.lasers = {

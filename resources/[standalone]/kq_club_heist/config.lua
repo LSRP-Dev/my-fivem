@@ -31,7 +31,7 @@ Config.useLasers = true
 --- FRAMEWORK SETTINGS
 -------------------------------------------------
 Config.esxSettings = {
-    enabled = false
+    enabled = false,
     -- Whether or not to use the new ESX export method
     useNewESXExport = false
 }

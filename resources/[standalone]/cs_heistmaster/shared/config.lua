@@ -84,8 +84,7 @@ Config.Heists = {
         start = { x = 148.9, y = -1040.1, z = 29.37 },
 
         vault = {
-            coords = { x = 147.034, y = -1046.515, z = 29.367 },
-        },  -- Adjusted coordinates - moved from wall
+            coords = { x = 147.034, y = -1046.515, z = 29.367 },  -- Adjusted coordinates - moved from wall
             heading = 250.0,  -- Closed position - aligns door flush with wall (vanilla interior)
             doorModel = 'v_ilev_gb_vauldr',  -- NEW: the vault door model to spawn
         },

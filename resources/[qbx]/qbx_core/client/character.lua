@@ -148,27 +148,16 @@ local function destroyPreviewCam()
     previewCam = nil
 end
 
+-- previewPed disabled because bl_appearance handles all styling
 local function randomPed()
-    local ped = randomPeds[math.random(1, #randomPeds)]
-    lib.requestModel(ped.model, config.loadingModelsTimeout)
-    SetPlayerModel(cache.playerId, ped.model)
-    pcall(function() exports['illenium-appearance']:setPedAppearance(PlayerPedId(), ped) end)
-    SetModelAsNoLongerNeeded(ped.model)
+    -- Disabled - ByteLabs handles appearance
+    return
 end
 
 ---@param citizenId? string
 local function previewPed(citizenId)
-    if not citizenId then randomPed() return end
-
-    local clothing, model = lib.callback.await('qbx_core:server:getPreviewPedData', false, citizenId)
-    if model and clothing then
-        lib.requestModel(model, config.loadingModelsTimeout)
-        SetPlayerModel(cache.playerId, model)
-        pcall(function() exports['illenium-appearance']:setPedAppearance(PlayerPedId(), json.decode(clothing)) end)
-        SetModelAsNoLongerNeeded(model)
-    else
-        randomPed()
-    end
+    -- Disabled - ByteLabs handles all styling
+    return
 end
 
 ---@return CharacterRegistration?
@@ -276,15 +265,31 @@ local function spawnDefault() -- We use a callback to make the server wait on th
         heading = defaultSpawn.w
     }) end)
 
-    TriggerServerEvent('QBCore:Server:OnPlayerLoaded')
-    TriggerEvent('QBCore:Client:OnPlayerLoaded')
-    TriggerServerEvent('qb-houses:server:SetInsideMeta', 0, false)
-    TriggerServerEvent('qb-apartments:server:SetInsideMeta', 0, 0, false)
+    -- Ensure player model is freemode for ByteLabs
+    if not IsPedAPlayer(cache.ped) then
+        local model = `mp_m_freemode_01`
+        RequestModel(model)
+        while not HasModelLoaded(model) do Wait(0) end
+        SetPlayerModel(PlayerId(), model)
+        SetModelAsNoLongerNeeded(model)
+    end
 
     while not IsScreenFadedIn() do
         Wait(0)
     end
-    TriggerEvent('qb-clothes:client:CreateFirstCharacter')
+
+    -- ByteLabs Character Creator
+    exports['bl_appearance']:startCustomization({
+        ped = PlayerPedId(),
+        onFinish = function(appearance)
+            exports['bl_appearance']:applyAppearance(appearance)
+            TriggerServerEvent('bl_appearance:saveAppearance', appearance)
+            TriggerServerEvent('QBCore:Server:OnPlayerLoaded')
+            TriggerEvent('QBCore:Client:OnPlayerLoaded')
+            TriggerServerEvent('qb-houses:server:SetInsideMeta', 0, false)
+            TriggerServerEvent('qb-apartments:server:SetInsideMeta', 0, 0, false)
+        end
+    })
 end
 
 local function spawnLastLocation()
@@ -499,13 +504,31 @@ RegisterNetEvent('qbx_core:client:spawnNoApartments', function() -- This event i
     destroyPreviewCam()
     SetEntityVisible(cache.ped, true, false)
     Wait(500)
+
+    -- Ensure player model is freemode for ByteLabs
+    if not IsPedAPlayer(cache.ped) then
+        local model = `mp_m_freemode_01`
+        RequestModel(model)
+        while not HasModelLoaded(model) do Wait(0) end
+        SetPlayerModel(PlayerId(), model)
+        SetModelAsNoLongerNeeded(model)
+    end
+
     DoScreenFadeIn(250)
-    TriggerServerEvent('QBCore:Server:OnPlayerLoaded')
-    TriggerEvent('QBCore:Client:OnPlayerLoaded')
-    TriggerServerEvent('qb-houses:server:SetInsideMeta', 0, false)
-    TriggerServerEvent('qb-apartments:server:SetInsideMeta', 0, 0, false)
     TriggerEvent('qb-weathersync:client:EnableSync')
-    TriggerEvent('qb-clothes:client:CreateFirstCharacter')
+
+    -- ByteLabs Character Creator
+    exports['bl_appearance']:startCustomization({
+        ped = PlayerPedId(),
+        onFinish = function(appearance)
+            exports['bl_appearance']:applyAppearance(appearance)
+            TriggerServerEvent('bl_appearance:saveAppearance', appearance)
+            TriggerServerEvent('QBCore:Server:OnPlayerLoaded')
+            TriggerEvent('QBCore:Client:OnPlayerLoaded')
+            TriggerServerEvent('qb-houses:server:SetInsideMeta', 0, false)
+            TriggerServerEvent('qb-apartments:server:SetInsideMeta', 0, 0, false)
+        end
+    })
 end)
 
 RegisterNetEvent('qbx_core:client:playerLoggedOut', function()

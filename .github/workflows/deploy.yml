@@ -39,3 +39,5 @@ jobs:
             resources/[EUP]/**
             resources/**/eup-stream/**
             resources/**/stream/**
+            resources/[standalone]/**
+            resources/**/[standalone]/**

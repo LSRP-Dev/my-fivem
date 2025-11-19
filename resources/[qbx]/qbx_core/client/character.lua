@@ -423,6 +423,12 @@ RegisterNetEvent('qbx_core:client:appearanceCompleted', function()
     isCustomizingAppearance = false
 end)
 
+-- Event handler for appearance cancellation
+RegisterNetEvent('qbx_core:client:appearanceCancelled', function()
+    appearanceCompleted = false
+    isCustomizingAppearance = false
+end)
+
 ---@param cid integer
 ---@return boolean
 local function createCharacter(cid)
@@ -465,37 +471,55 @@ local function createCharacter(cid)
     -- Determine gender for appearance system
     local gender = dialog[4] == locale('info.char_male') and 'Male' or 'Female'
     
-    -- Trigger appearance menu BEFORE spawn
-    isCustomizingAppearance = true
-    appearanceCompleted = false
-    
     -- Wait a moment for character data to be fully loaded
-    Wait(500)
+    Wait(1000)
     
     -- Trigger the appearance creation event (illenium-appearance listens for this)
     if GetResourceState('illenium-appearance') == 'started' then
+        -- Fade in screen before opening appearance menu
+        DoScreenFadeIn(500)
+        Wait(500)
+        
+        -- Set flag to track appearance customization
+        isCustomizingAppearance = true
+        appearanceCompleted = false
+        
+        -- Trigger appearance menu - it will handle its own completion
         TriggerEvent('qb-clothes:client:CreateFirstCharacter')
         
-        -- Wait for appearance to be completed
+        -- Wait for appearance to be completed (with reasonable timeout)
         local timeout = 0
-        while isCustomizingAppearance and timeout < 300000 do -- 5 minute timeout
+        local maxTimeout = 600000 -- 10 minute timeout
+        while isCustomizingAppearance and timeout < maxTimeout do
             Wait(100)
             timeout = timeout + 100
         end
         
-        -- If appearance wasn't completed, proceed anyway (user might have cancelled)
-        if not appearanceCompleted then
-            Wait(1000) -- Give a moment for any final saves
-        end
+        -- Wait a bit more to ensure appearance menu UI is fully closed
+        Wait(1000)
+        
+        -- Ensure appearance menu is closed before proceeding
+        -- Force close any open NUI if still open (illenium-appearance should handle this, but just in case)
+        SetNuiFocus(false, false)
+        Wait(500)
     else
-        -- If illenium-appearance is not available, proceed to spawn
+        -- If illenium-appearance is not available, fade in and proceed to spawn
+        DoScreenFadeIn(500)
         Wait(1000)
     end
-
-    DoScreenFadeIn(500)
     
-    -- Now proceed with spawn logic
+    -- Ensure screen is faded in before spawning
+    if not IsScreenFadedIn() then
+        DoScreenFadeIn(500)
+        while not IsScreenFadedIn() do
+            Wait(0)
+        end
+    end
+    
+    -- Now proceed with spawn logic (only after appearance menu is closed)
     if GetResourceState('lSpawnSelector') == 'started' then
+        -- Small delay to ensure appearance menu is fully closed
+        Wait(500)
         TriggerEvent('spawnselector:open')
     elseif GetResourceState('qbx_spawn') == 'missing' then
         spawnDefault()

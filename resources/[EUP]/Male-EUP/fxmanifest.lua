@@ -1,7 +1,13 @@
 fx_version 'cerulean'
+game 'gta5'
 
-games   { 'gta5' }
+description 'Male EUP Clothing Pack'
+version '1.0.0'
 
-description 'Clothing'
+files {
+    'stream/**/*.ydd',
+    'stream/**/*.ytd',
+    'stream/**/*.ymt'
+}
 
 lua54 'yes'

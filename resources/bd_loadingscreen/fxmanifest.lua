@@ -20,6 +20,4 @@ files {
     'logo/logo.png',
     'song/*',
     'img/*'
-
-
 }

@@ -1,0 +1,96 @@
+.prison-time-container {
+    height: 5.65vh;
+    width: 9.01vw;
+    position: absolute;
+    top: 1%;
+    /* Added a small bit of padding */
+    left: 50%;
+    transform: translate(-50%, 0);
+}
+
+.prison-time-background {
+    background-color: rgba(0, 0, 0, 0.51);
+    height: 5.65vh;
+    width: 9.01vw;
+    position: absolute;
+    top: 1%;
+    /* Added a small bit of padding */
+    left: 50%;
+    transform: translate(-50%, 0);
+    border-radius: 10px;
+    border: 2px solid #2A95E4;
+}
+
+.prison-time-divider {
+    background-color: #2A95E4;
+    width: 15.9vh;
+    height: 0.208vh;
+    position: absolute;
+    top: 60%;
+    /* Added a small bit of padding */
+    left: 50%;
+    transform: translate(-50%, 0);
+}
+
+.prison-time-text {
+    color: white;
+    font-size: 3.2vh;
+    font-family: 'alarm clock', sans-serif;
+    position: absolute;
+    top: 1%;
+    /* Added a small bit of padding */
+    left: 50%;
+    transform: translate(-50%, 0);
+}
+
+.prison-schedule-type {
+    color: white;
+    font-size: 2.11vh;
+    font-family: 'Times New Roman', serif;
+    position: absolute;
+    top: 63%;
+    /* Added a small bit of padding */
+    left: 50%;
+    transform: translate(-50%, 0);
+    white-space: nowrap;
+}
+
+.prison-time-image {
+    display: none;
+    height: 5.65vh;
+    width: 9.01vw;
+    position: absolute;
+    top: 2%;
+    left: -0.25%;
+    z-index: -1;
+    /* Set to a negative value to ensure it's behind everything else */
+}
+
+.tutorial-container {
+    position: absolute;
+    top: 10%;
+    left: 50%;
+    width: 45.57vw;
+    height: 16.76vh;
+    border-radius: 10px;
+    border: 2px solid #FFFFFF;
+    background-color: #1E1E1E78;
+    transform: translate(-50%, 0);
+}
+
+.tutorial-text {
+    color: white;
+    font-size: 40px;
+    font-family: "Special Elite", system-ui;
+    font-weight: 400;
+    font-style: normal;
+    text-align: center;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 99%;
+    /* Ensure it takes the full width of its parent */
+    white-space: normal;
+    /* Ensure text wraps */
+}

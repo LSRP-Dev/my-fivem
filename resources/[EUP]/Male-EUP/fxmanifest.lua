@@ -10,4 +10,6 @@ files {
     'stream/**/*.ymt'
 }
 
+data_file 'COMPONENTPEDS_FILE' 'stream/**/player_one.ymt'
+
 lua54 'yes'

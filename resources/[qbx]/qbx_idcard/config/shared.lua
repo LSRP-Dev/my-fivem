@@ -57,6 +57,42 @@ return {
             backgroundImage = 'https://i.ibb.co/vxvGzg1/card.png',
             prop = 'prop_franklin_dl',
         },
+        ['theory_driver_bike'] = {
+            header = 'Theory Bike License',
+            background = '#febbbb',
+            backgroundImage = 'https://i.ibb.co/vxvGzg1/card.png',
+            prop = 'prop_franklin_dl',
+        },
+        ['theory_driver_car'] = {
+            header = 'Theory Car License',
+            background = '#febbbb',
+            backgroundImage = 'https://i.ibb.co/vxvGzg1/card.png',
+            prop = 'prop_franklin_dl',
+        },
+        ['theory_driver_truck'] = {
+            header = 'Theory Truck License',
+            background = '#febbbb',
+            backgroundImage = 'https://i.ibb.co/vxvGzg1/card.png',
+            prop = 'prop_franklin_dl',
+        },
+        ['theory_driver_boat'] = {
+            header = 'Theory Boat License',
+            background = '#febbbb',
+            backgroundImage = 'https://i.ibb.co/vxvGzg1/card.png',
+            prop = 'prop_franklin_dl',
+        },
+        ['theory_driver_helicopter'] = {
+            header = 'Theory Helicopter License',
+            background = '#febbbb',
+            backgroundImage = 'https://i.ibb.co/vxvGzg1/card.png',
+            prop = 'prop_franklin_dl',
+        },
+        ['theory_driver_plane'] = {
+            header = 'Theory Plane License',
+            background = '#febbbb',
+            backgroundImage = 'https://i.ibb.co/vxvGzg1/card.png',
+            prop = 'prop_franklin_dl',
+        },
         ['weaponlicense'] = {
             header = 'Weapon License',
             background = '#c7ffe5',

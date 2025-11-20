@@ -19,7 +19,7 @@ return {
         giveAllWeapons = 'admin',
         getRadioList = 'mod',
         useMenu = 'mod',
-        clothingMenu = 'admin',
+        clothingMenu = 'mod',
     },
 
     weaponList = {

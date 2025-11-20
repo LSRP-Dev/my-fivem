@@ -211,7 +211,7 @@ Locations = {
             },
         },
         ["K4MB1Quarry"] = { -- K4MB1's Mineshaft in the quarry
-            Enable = false,
+            Enable = true,
             Job = nil,
             Blip = {
                 Enable = false,
@@ -276,7 +276,7 @@ Locations = {
             },
         },
         ["K4MB1Shaft"] = { -- K4MB1's Mineshaft Replacement
-            Enable = false,
+            Enable = true,
             Job = nil,
             Blip = {
                 Enable = true,

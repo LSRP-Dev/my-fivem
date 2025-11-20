@@ -2,9 +2,9 @@ fx_version 'cerulean'
 game 'gta5'
 lua54 'yes'
 
-author 'Bebik(digitalranger)'
-description 'Loadingscreen script by BebikDEV - Discord: https://discord.gg/4VwXy4aDBd'
-version '1.1.1'
+author 'Chris (Customized)'
+description 'Custom Loading Screen for Chris FiveM Server'
+version '1.0.0'
 
 loadscreen 'index.html'
 loadscreen_manual_shutdown 'yes'

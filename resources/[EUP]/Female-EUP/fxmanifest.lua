@@ -4,6 +4,7 @@ game 'gta5'
 description 'Female EUP Clothing Pack'
 version '1.0.0'
 
-this_is_a_map 'yes'
+-- Stream-only resource for texture replacements
+-- No files section needed - textures stream automatically
 
 lua54 'yes'

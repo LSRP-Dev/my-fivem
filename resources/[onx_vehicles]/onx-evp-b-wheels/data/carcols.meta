@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CVehicleModelInfoVarGlobal>
+    <Wheels>
+        <Item /> <!-- VWT_SPORT -->
+        <Item>
+            <!-- VWT_MUSCLE -->
+            <Item>
+                <wheelName>wheelonxpol_musc_01</wheelName>
+                <wheelVariation>wheelonxpol_musc_01</wheelVariation>
+                <modShopLabel>wheelonxpol_musc_01</modShopLabel>
+                <rimRadius value="0.324159" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelonxpol_musc_02</wheelName>
+                <wheelVariation>wheelonxpol_musc_02</wheelVariation>
+                <modShopLabel>wheelonxpol_musc_02</modShopLabel>
+                <rimRadius value="0.324159" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelonxpol_musc_03</wheelName>
+                <wheelVariation>wheelonxpol_musc_03</wheelVariation>
+                <modShopLabel>wheelonxpol_musc_03</modShopLabel>
+                <rimRadius value="0.324159" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelonxpol_musc_04</wheelName>
+                <wheelVariation>wheelonxpol_musc_04</wheelVariation>
+                <modShopLabel>wheelonxpol_musc_04</modShopLabel>
+                <rimRadius value="0.337312" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelonxpol_musc_05</wheelName>
+                <wheelVariation>wheelonxpol_musc_05</wheelVariation>
+                <modShopLabel>wheelonxpol_musc_05</modShopLabel>
+                <rimRadius value="0.324159" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelonxpol_musc_06</wheelName>
+                <wheelVariation>wheelonxpol_musc_06</wheelVariation>
+                <modShopLabel>wheelonxpol_musc_06</modShopLabel>
+                <rimRadius value="0.278954" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelonxpol_musc_07</wheelName>
+                <wheelVariation>wheelonxpol_musc_07</wheelVariation>
+                <modShopLabel>wheelonxpol_musc_07</modShopLabel>
+                <rimRadius value="0.293532" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelonxpol_musc_08</wheelName>
+                <wheelVariation>wheelonxpol_musc_08</wheelVariation>
+                <modShopLabel>wheelonxpol_musc_08</modShopLabel>
+                <rimRadius value="0.336203" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelonxpol_musc_09</wheelName>
+                <wheelVariation>wheelonxpol_musc_09</wheelVariation>
+                <modShopLabel>wheelonxpol_musc_09</modShopLabel>
+                <rimRadius value="0.289095" />
+                <rear value="false" />
+            </Item>
+        </Item>
+        <Item /> <!-- VWT_LOWRIDER -->
+        <Item>
+            <!-- VWT_SUV -->
+            <Item>
+                <wheelName>wheelonxpol_suv_01</wheelName>
+                <wheelVariation>wheelonxpol_suv_01</wheelVariation>
+                <modShopLabel>wheelonxpol_suv_01</modShopLabel>
+                <rimRadius value="0.319082" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelonxpol_suv_02</wheelName>
+                <wheelVariation>wheelonxpol_suv_02</wheelVariation>
+                <modShopLabel>wheelonxpol_suv_02</modShopLabel>
+                <rimRadius value="0.340376" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelonxpol_suv_03</wheelName>
+                <wheelVariation>wheelonxpol_suv_03</wheelVariation>
+                <modShopLabel>wheelonxpol_suv_03</modShopLabel>
+                <rimRadius value="0.286206" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelonxpol_suv_04</wheelName>
+                <wheelVariation>wheelonxpol_suv_04</wheelVariation>
+                <modShopLabel>wheelonxpol_suv_04</modShopLabel>
+                <rimRadius value="0.281565" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelonxpol_suv_05</wheelName>
+                <wheelVariation>wheelonxpol_suv_05</wheelVariation>
+                <modShopLabel>wheelonxpol_suv_05</modShopLabel>
+                <rimRadius value="0.294443" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelscoutc_suv_01</wheelName>
+                <wheelVariation />
+                <modShopLabel>wheelscoutc_suv_01</modShopLabel>
+                <rimRadius value="0.296723" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelscoutc_suv_02</wheelName>
+                <wheelVariation />
+                <modShopLabel>wheelscoutc_suv_02</modShopLabel>
+                <rimRadius value="0.296723" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelscoutc_suv_03</wheelName>
+                <wheelVariation />
+                <modShopLabel>wheelscoutc_suv_03</modShopLabel>
+                <rimRadius value="0.292954" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelscoutc_suv_04</wheelName>
+                <wheelVariation />
+                <modShopLabel>wheelscoutc_suv_04</modShopLabel>
+                <rimRadius value="0.292954" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheeltfbison_suv_01</wheelName>
+                <wheelVariation>wheeltfbison_suv_01</wheelVariation>
+                <modShopLabel>WHEELTFBISON_SUV_01</modShopLabel>
+                <rimRadius value="0.312265" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheeltfbison_suv_02</wheelName>
+                <wheelVariation>wheeltfbison_suv_02</wheelVariation>
+                <modShopLabel>WHEELTFBISON_SUV_02</modShopLabel>
+                <rimRadius value="0.327685" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheeltfbison_suv_03</wheelName>
+                <wheelVariation>wheeltfbison_suv_03</wheelVariation>
+                <modShopLabel>WHEELTFBISON_SUV_03</modShopLabel>
+                <rimRadius value="0.327685" />
+                <rear value="false" />
+            </Item>
+        </Item>
+        <Item>
+            <!-- VWT_OFFROAD -->
+            <Item>
+                <wheelName>wheelsand_off_01</wheelName>
+                <wheelVariation>wheelsand_off_01</wheelVariation>
+                <modShopLabel>WHEELSAND_OFF_01</modShopLabel>
+                <rimRadius value="0.326096" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelsand_off_02</wheelName>
+                <wheelVariation>wheelsand_off_02</wheelVariation>
+                <modShopLabel>WHEELSAND_OFF_02</modShopLabel>
+                <rimRadius value="0.314738" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelsand_off_03</wheelName>
+                <wheelVariation>wheelsand_off_03</wheelVariation>
+                <modShopLabel>WHEELSAND_OFF_03</modShopLabel>
+                <rimRadius value="0.316408" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelsand_off_04</wheelName>
+                <wheelVariation>wheelsand_off_04</wheelVariation>
+                <modShopLabel>WHEELSAND_OFF_04</modShopLabel>
+                <rimRadius value="0.314885" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelsand_off_05</wheelName>
+                <wheelVariation>wheelsand_off_05</wheelVariation>
+                <modShopLabel>WHEELSAND_OFF_05</modShopLabel>
+                <rimRadius value="0.314885" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelsand_off_06</wheelName>
+                <wheelVariation>wheelsand_off_06</wheelVariation>
+                <modShopLabel>WHEELSAND_OFF_06</modShopLabel>
+                <rimRadius value="0.314885" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelscoutc_off_01</wheelName>
+                <wheelVariation />
+                <modShopLabel>wheelscoutc_off_01</modShopLabel>
+                <rimRadius value="0.266684" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheelscoutc_off_02</wheelName>
+                <wheelVariation />
+                <modShopLabel>wheelscoutc_off_02</modShopLabel>
+                <rimRadius value="0.266684" />
+                <rear value="false" />
+            </Item>
+            <Item>
+                <wheelName>wheeltfbison_off_01</wheelName>
+                <wheelVariation>wheeltfbison_off_01</wheelVariation>
+                <modShopLabel>WHEELTFBISON_OFF_01</modShopLabel>
+                <rimRadius value="0.333093" />
+                <rear value="false" />
+            </Item>
+        </Item>
+        <Item /> <!-- VWT_BIKE -->
+        <Item /> <!-- VWT_HIEND -->
+        <Item /> <!-- VWT_SUPERMOD1 -->
+        <Item /> <!-- VWT_SUPERMOD2 -->
+        <Item /> <!-- VWT_SUPERMOD3 -->
+        <Item /> <!-- VWT_SUPERMOD4 -->
+        <Item /> <!-- VWT_SUPERMOD5 -->
+    </Wheels>
+</CVehicleModelInfoVarGlobal>

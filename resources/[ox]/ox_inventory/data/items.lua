@@ -3628,5 +3628,17 @@ return {
             event = 'cardboard:read'
         },
     },
+
+    ['cardboard-location'] = {
+        label = 'Cardboard Note (Location)',
+        weight = 1,
+        stack = false,
+        close = true,
+        description = 'A dirty piece of cardboard with something written on it.',
+        consume = 0,
+        client = {
+            event = 'cardboard:read'
+        },
+    },
 }
 

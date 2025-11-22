@@ -38,9 +38,23 @@ function SaveBuildInfo()
     SaveResourceFile(GetCurrentResourceName(), 'build_info.json', buildJson, -1)
 end
 
+-- Helper function to check admin permissions
+local function isPlayerAdmin(source)
+    if source == 0 then return true end -- Console is always admin
+    
+    -- Check for various admin permissions
+    if IsPlayerAceAllowed(source, 'clothing.admin') then return true end
+    if IsPlayerAceAllowed(source, 'admin') then return true end
+    if IsPlayerAceAllowed(source, 'god') then return true end
+    if IsPlayerAceAllowed(source, 'qbcore.admin') then return true end
+    if IsPlayerAceAllowed(source, 'qbcore.god') then return true end
+    
+    return false
+end
+
 -- Admin command to get build status
 RegisterCommand('clothinginfo', function(source, args, rawCommand)
-    if source == 0 or IsPlayerAceAllowed(source, 'clothing.admin') then
+    if isPlayerAdmin(source) then
         local info = clothingLoader.buildInfo
         
         if source == 0 then
@@ -82,7 +96,7 @@ end, false)
 
 -- Admin command to rebuild clothing
 RegisterCommand('rebuildclothing', function(source, args, rawCommand)
-    if source == 0 or IsPlayerAceAllowed(source, 'clothing.admin') then
+    if isPlayerAdmin(source) then
         if source == 0 then
             print("^3[Clothing Loader]^7 Manual rebuild requested from console")
         else
@@ -185,16 +199,13 @@ RegisterNetEvent('clothing_loader:loadOutfit', function(outfitName)
     TriggerClientEvent('clothing_loader:applyOutfit', source, outfit.data)
 end)
 
--- Get player outfits list (using lib.callback if available, otherwise use events)
-if GetResourceState('ox_lib') == 'started' then
-    lib.callback.register('clothing_loader:getOutfits', function(source)
-        local identifier = getPlayerIdentifier(source)
-        
-        if not identifier or not playerOutfits[identifier] then
-            return {}
-        end
-        
-        local outfitsList = {}
+-- Get player outfits list (using event-based system for compatibility)
+RegisterNetEvent('clothing_loader:getOutfits', function()
+    local source = source
+    local identifier = getPlayerIdentifier(source)
+    
+    local outfitsList = {}
+    if identifier and playerOutfits[identifier] then
         for name, outfit in pairs(playerOutfits[identifier]) do
             table.insert(outfitsList, {
                 name = name,
@@ -202,29 +213,10 @@ if GetResourceState('ox_lib') == 'started' then
                 modified = outfit.modified
             })
         end
-        
-        return outfitsList
-    end)
-else
-    -- Fallback to event-based system
-    RegisterNetEvent('clothing_loader:getOutfits', function()
-        local source = source
-        local identifier = getPlayerIdentifier(source)
-        
-        local outfitsList = {}
-        if identifier and playerOutfits[identifier] then
-            for name, outfit in pairs(playerOutfits[identifier]) do
-                table.insert(outfitsList, {
-                    name = name,
-                    created = outfit.created,
-                    modified = outfit.modified
-                })
-            end
-        end
-        
-        TriggerClientEvent('clothing_loader:receiveOutfits', source, outfitsList)
-    end)
-end
+    end
+    
+    TriggerClientEvent('clothing_loader:receiveOutfits', source, outfitsList)
+end)
 
 -- Resource stop handler
 AddEventHandler('onResourceStop', function(resourceName)

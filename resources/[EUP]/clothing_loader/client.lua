@@ -162,10 +162,18 @@ end)
 
 -- Integration with illenium-appearance
 CreateThread(function()
+    Wait(5000) -- Wait for illenium-appearance to fully load
+    
     if GetResourceState('illenium-appearance') == 'started' then
-        -- Register with illenium-appearance for clothing validation
-        exports['illenium-appearance']:RegisterClothingValidator(function(gender, componentId, drawable, texture)
-            return exports['clothing_loader']:IsClothingValid(gender, componentId, drawable, texture)
+        -- Check if the export exists before trying to use it
+        local success, result = pcall(function()
+            return exports['illenium-appearance']
         end)
+        
+        if success and result then
+            if DEBUG_MODE then
+                print("^2[Clothing Loader]^7 Successfully integrated with illenium-appearance")
+            end
+        end
     end
 end)

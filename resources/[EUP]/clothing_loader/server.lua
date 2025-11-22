@@ -132,10 +132,21 @@ end)
 -- Clothing outfit management
 local playerOutfits = {}
 
+-- Helper function to get player identifier
+local function getPlayerIdentifier(source)
+    local identifiers = GetPlayerIdentifiers(source)
+    for _, id in pairs(identifiers) do
+        if string.find(id, "license:") then
+            return id
+        end
+    end
+    return nil
+end
+
 -- Save player outfit
 RegisterNetEvent('clothing_loader:saveOutfit', function(outfitName, outfitData)
     local source = source
-    local identifier = GetPlayerIdentifierByType(source, 'license')
+    local identifier = getPlayerIdentifier(source)
     
     if not identifier then return end
     
@@ -159,7 +170,7 @@ end)
 -- Load player outfit
 RegisterNetEvent('clothing_loader:loadOutfit', function(outfitName)
     local source = source
-    local identifier = GetPlayerIdentifierByType(source, 'license')
+    local identifier = getPlayerIdentifier(source)
     
     if not identifier or not playerOutfits[identifier] or not playerOutfits[identifier][outfitName] then
         TriggerClientEvent('chat:addMessage', source, {
@@ -174,26 +185,46 @@ RegisterNetEvent('clothing_loader:loadOutfit', function(outfitName)
     TriggerClientEvent('clothing_loader:applyOutfit', source, outfit.data)
 end)
 
--- Get player outfits list
-RegisterCallback('clothing_loader:getOutfits', function(source, cb)
-    local identifier = GetPlayerIdentifierByType(source, 'license')
-    
-    if not identifier or not playerOutfits[identifier] then
-        cb({})
-        return
-    end
-    
-    local outfitsList = {}
-    for name, outfit in pairs(playerOutfits[identifier]) do
-        table.insert(outfitsList, {
-            name = name,
-            created = outfit.created,
-            modified = outfit.modified
-        })
-    end
-    
-    cb(outfitsList)
-end)
+-- Get player outfits list (using lib.callback if available, otherwise use events)
+if GetResourceState('ox_lib') == 'started' then
+    lib.callback.register('clothing_loader:getOutfits', function(source)
+        local identifier = getPlayerIdentifier(source)
+        
+        if not identifier or not playerOutfits[identifier] then
+            return {}
+        end
+        
+        local outfitsList = {}
+        for name, outfit in pairs(playerOutfits[identifier]) do
+            table.insert(outfitsList, {
+                name = name,
+                created = outfit.created,
+                modified = outfit.modified
+            })
+        end
+        
+        return outfitsList
+    end)
+else
+    -- Fallback to event-based system
+    RegisterNetEvent('clothing_loader:getOutfits', function()
+        local source = source
+        local identifier = getPlayerIdentifier(source)
+        
+        local outfitsList = {}
+        if identifier and playerOutfits[identifier] then
+            for name, outfit in pairs(playerOutfits[identifier]) do
+                table.insert(outfitsList, {
+                    name = name,
+                    created = outfit.created,
+                    modified = outfit.modified
+                })
+            end
+        end
+        
+        TriggerClientEvent('clothing_loader:receiveOutfits', source, outfitsList)
+    end)
+end
 
 -- Resource stop handler
 AddEventHandler('onResourceStop', function(resourceName)

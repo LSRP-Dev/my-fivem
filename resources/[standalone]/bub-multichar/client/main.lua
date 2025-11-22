@@ -302,6 +302,12 @@ RegisterNetEvent('qbx_core:client:playerLoggedOut', function()
   chooseCharacter()
 end)
 
+-- Register event for external resources to trigger character selection
+RegisterNetEvent('bub-multichar:client:chooseChar', function()
+  if GetInvokingResource() then return end -- Make sure this can only be triggered from the server
+  chooseCharacter()
+end)
+
 CreateThread(function()
   local model = `a_m_y_bevhills_01`
   while true do

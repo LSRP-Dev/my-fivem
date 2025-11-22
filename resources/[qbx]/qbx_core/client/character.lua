@@ -517,10 +517,9 @@ local function createCharacter(cid)
     end
     
     -- Now proceed with spawn logic (only after appearance menu is closed)
-    if GetResourceState('lSpawnSelector') == 'started' then
-        -- Small delay to ensure appearance menu is fully closed
-        Wait(500)
-        TriggerEvent('spawnselector:open')
+    if GetResourceState('bub-multichar') == 'started' then
+        -- bub-multichar handles its own spawn logic
+        -- No additional action needed
     elseif GetResourceState('qbx_spawn') == 'missing' then
         spawnDefault()
     else
@@ -615,8 +614,9 @@ local function chooseCharacter()
                         onSelect = function()
                             DoScreenFadeOut(10)
                             lib.callback.await('qbx_core:server:loadCharacter', false, character.citizenid)
-                            if GetResourceState('lSpawnSelector') == 'started' then
-                                TriggerEvent('spawnselector:open')
+                            if GetResourceState('bub-multichar') == 'started' then
+                                -- bub-multichar handles its own spawn logic
+                                TriggerClientEvent('bub-multichar:client:chooseChar', -1)
                             elseif GetResourceState('qbx_apartments'):find('start') then
                                 TriggerEvent('apartments:client:setupSpawnUI', character.citizenid)
                             elseif GetResourceState('qbx_spawn'):find('start') then

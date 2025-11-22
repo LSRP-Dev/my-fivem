@@ -1,0 +1,43 @@
+-- illenium-appearance QBX Bridge - Client Side
+-- Provides QB Core compatible exports that route to QBX Core
+
+local QBXCore = nil
+local bridgeReady = false
+
+-- Initialize bridge
+CreateThread(function()
+    -- Wait for qbx_core to be ready
+    while GetResourceState('qbx_core') ~= 'started' do
+        Wait(500)
+    end
+    
+    -- Get QBX Core exports
+    QBXCore = exports.qbx_core
+    
+    if not QBXCore then
+        print("^1[illenium-qbx-bridge] Failed to get qbx_core exports!^7")
+        return
+    end
+    
+    bridgeReady = true
+    print("^2[illenium-qbx-bridge] Client bridge initialized successfully!^7")
+end)
+
+-- Bridge exports for illenium-appearance
+exports('illenium-qbx-bridge', {
+    -- Get player data using QBX Core
+    GetPlayerData = function()
+        if not bridgeReady or not QBXCore then return nil end
+        return QBXCore.Functions.GetPlayerData()
+    end,
+    
+    -- Check if bridge is ready
+    IsReady = function()
+        return bridgeReady
+    end,
+    
+    -- Get QBX Core directly
+    GetQBXCore = function()
+        return QBXCore
+    end
+})

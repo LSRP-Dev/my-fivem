@@ -24,7 +24,6 @@ local maps = {
     'anarchy_Townhall',
     'int_yellowjack',
     'thunder_medicalcenter',
-    'Maps_Bella_Vanilla_-_by_Ajna_Mods'
 
 }
 

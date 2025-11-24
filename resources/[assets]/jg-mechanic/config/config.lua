@@ -106,7 +106,7 @@ Config.DisableNoPaymentOptionForEmployees = false
 -- Mechanic Locations
 Config.MechanicLocations = {
   bennys = {
-    type = "self-service",
+    type = "owned",
     logo = "bennys.png", -- logos go in /logos
     locations = {
       {

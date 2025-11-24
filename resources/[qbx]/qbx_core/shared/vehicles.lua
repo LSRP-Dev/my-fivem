@@ -8117,7 +8117,7 @@ return {
         brand = 'harley',
         model = '2roadking',
         price = 27299,
-        category = 'bike',
+        category = 'motorcycles',
         type = 'automobile',
         hash = `roadking`,
     }

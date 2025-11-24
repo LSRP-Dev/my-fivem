@@ -16,7 +16,7 @@ Config.NumberAndDateFormat = "en-US"
 Config.Currency = "USD"
 
 -- Set to false to use built-in job system
-Config.UseFrameworkJobs = true
+Config.UseFrameworkJobs = false
 
 -- Mechanic Tablet
 Config.UseTabletCommand = "tablet" -- set to false to disable command

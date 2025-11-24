@@ -24,8 +24,7 @@ local maps = {
     'anarchy_Townhall',
     'int_yellowjack',
     'thunder_medicalcenter',
-    'mc_grapeseed',
-    'dl_sandymechanic'
+    'mc_grapeseed'
 
 }
 

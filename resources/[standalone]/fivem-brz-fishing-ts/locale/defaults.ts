@@ -35,10 +35,6 @@ export const LocaleDefaults = {
     label: "fish",
     variables: {},
   },
-  fish_blip_name: {
-    label: "Fishing Pier",
-    variables: {},
-  },
   pull_too_hard: {
     label: "The line broke! pull slower next time.",
     variables: {},

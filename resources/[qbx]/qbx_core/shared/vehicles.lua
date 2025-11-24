@@ -8111,5 +8111,14 @@ return {
         category = 'suvs',
         type = 'automobile',
         hash = `woodlander`,
+    },
+    roadking = {
+        name = 'roadking',
+        brand = 'harley',
+        model = '2roadking',
+        price = 27299,
+        category = 'bike',
+        type = 'automobile',
+        hash = `roadking`,
     }
 }

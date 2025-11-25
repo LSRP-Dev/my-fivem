@@ -20,7 +20,7 @@ local function CreateBlip(blipConfig, coords)
     SetBlipSprite(blip, blipConfig.Sprite)
     SetBlipColour(blip, blipConfig.Color)
     SetBlipScale(blip, blipConfig.Scale)
-    SetBlipAsShortRange(blip, false) -- Set to false to show on full map
+    SetBlipAsShortRange(blip, true) -- Set to true to only show on minimap when nearby
     BeginTextCommandSetBlipName("STRING")
     AddTextComponentString(blipConfig.Name)
     EndTextCommandSetBlipName(blip)

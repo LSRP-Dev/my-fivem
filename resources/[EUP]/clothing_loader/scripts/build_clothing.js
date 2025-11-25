@@ -19,10 +19,12 @@ class ClothingBuilder {
                 'ef_clothes_new',
                 'Male-EUP',
                 'Female-EUP',
+                'cfx_onx_gov_clothing',
                 'cfx_onx_gov_clothing_pack',
                 'onx-evp-a-shared.pack',
                 'onx-evp-b-wheels.pack',
-                'onx-evp-c-pack.pack'
+                'onx-evp-c-pack.pack',
+                'ensart_sonsof'
             ],
             
             // File extensions to process
@@ -39,7 +41,9 @@ class ClothingBuilder {
                 path.join(__dirname, '..', '..', '..', '..', 'resources'),
                 path.join(__dirname, '..', '..', '..', '..', 'resources', '[EUP]'),
                 path.join(__dirname, '..', '..', '..', '..', 'resources', '[standalone]'),
-                path.join(__dirname, '..', '..', '..', '..', 'resources', '[assets]')
+                path.join(__dirname, '..', '..', '..', '..', 'resources', '[assets]'),
+                // Also search within [EUP] subdirectories
+                path.join(__dirname, '..', '..', '[onx_peds]')
             ]
         };
         

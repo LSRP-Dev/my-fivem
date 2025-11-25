@@ -3,23 +3,66 @@ if not Framework.QBCore() then return end
 local client = client
 
 -- Try QBX Core first, then fall back to QB Core
+-- Wait for framework to be ready (handles timing issues during resource startup)
 local QBCore
-if GetResourceState('qbx_core') == 'started' then
-    -- Use QBX Core
-    QBCore = exports.qbx_core
-elseif GetResourceState('qb-core') == 'started' then
-    -- Use QB Core
-    QBCore = exports["qb-core"]:GetCoreObject()
-else
+local usingQBX = false
+local maxWaitTime = 10000 -- 10 seconds max wait
+local waitTime = 0
+local waitInterval = 100 -- Check every 100ms
+
+-- Wait for qbx_core to be ready
+while waitTime < maxWaitTime do
+    local qbxState = GetResourceState('qbx_core')
+    if qbxState == 'started' then
+        -- Use QBX Core
+        QBCore = exports.qbx_core
+        usingQBX = true
+        print("^2[illenium-appearance] Using QBX Core on client^7")
+        break
+    elseif qbxState == 'starting' then
+        -- Still starting, wait a bit
+        Wait(waitInterval)
+        waitTime = waitTime + waitInterval
+    else
+        -- Not found or stopped, check for qb-core instead
+        break
+    end
+end
+
+-- If qbx_core not found, try qb-core
+if not QBCore then
+    waitTime = 0
+    while waitTime < maxWaitTime do
+        local qbState = GetResourceState('qb-core')
+        if qbState == 'started' then
+            -- Use QB Core
+            QBCore = exports["qb-core"]:GetCoreObject()
+            print("^2[illenium-appearance] Using QB Core on client^7")
+            break
+        elseif qbState == 'starting' then
+            -- Still starting, wait a bit
+            Wait(waitInterval)
+            waitTime = waitTime + waitInterval
+        else
+            -- Not found
+            break
+        end
+    end
+end
+
+-- Final check
+if not QBCore then
     -- No compatible framework found
-    print("^1[illenium-appearance] No compatible QB framework found!^7")
+    print("^1[illenium-appearance] No compatible QB framework found on client! (qbx_core state: " .. tostring(GetResourceState('qbx_core')) .. ", qb-core state: " .. tostring(GetResourceState('qb-core')) .. ")^7")
     return
 end
 
 local PlayerData = {}
-if GetResourceState('qbx_core') == 'started' then
-    PlayerData = QBCore.Functions.GetPlayerData() or {}
+if usingQBX then
+    -- QBX Core method - use export directly
+    PlayerData = exports.qbx_core:GetPlayerData() or {}
 elseif QBCore and QBCore.Functions then
+    -- QB Core method
     PlayerData = QBCore.Functions.GetPlayerData() or {}
 end
 
@@ -48,26 +91,33 @@ function Framework.GetPlayerGender()
 end
 
 function Framework.UpdatePlayerData()
-    if GetResourceState('qbx_core') == 'started' then
-        PlayerData = QBCore.Functions.GetPlayerData() or {}
+    if usingQBX then
+        -- QBX Core method - use export directly
+        PlayerData = exports.qbx_core:GetPlayerData() or {}
     elseif QBCore and QBCore.Functions then
+        -- QB Core method
         PlayerData = QBCore.Functions.GetPlayerData() or {}
     end
     setClientParams()
 end
 
 function Framework.HasTracker()
-    if GetResourceState('qbx_core') == 'started' then
-        -- QBX Core method
+    if usingQBX then
+        -- QBX Core method - use export directly
+        local playerData = exports.qbx_core:GetPlayerData()
+        if playerData and playerData.metadata then
+            return playerData.metadata["tracker"] or false
+        end
+        return false
+    elseif QBCore and QBCore.Functions then
+        -- QB Core method
         local playerData = QBCore.Functions.GetPlayerData()
         if playerData and playerData.metadata then
             return playerData.metadata["tracker"] or false
         end
         return false
-    else
-        -- QB Core method
-        return QBCore.Functions.GetPlayerData().metadata["tracker"] or false
     end
+    return false
 end
 
 function Framework.CheckPlayerMeta()
@@ -79,9 +129,25 @@ function Framework.IsPlayerAllowed(citizenid)
 end
 
 function Framework.GetRankInputValues(type)
-    local grades = QBCore.Shared.Jobs[client.job.name].grades
-    if type == "gang" then
-        grades = QBCore.Shared.Gangs[client.gang.name].grades
+    local grades
+    if usingQBX then
+        -- QBX Core - use bridge compatibility for Shared data
+        local qbCoreCompat = exports["qb-core"]:GetCoreObject()
+        if type == "gang" then
+            grades = qbCoreCompat.Shared.Gangs[client.gang.name].grades
+        else
+            grades = qbCoreCompat.Shared.Jobs[client.job.name].grades
+        end
+    elseif QBCore and QBCore.Shared then
+        -- QB Core method
+        if type == "gang" then
+            grades = QBCore.Shared.Gangs[client.gang.name].grades
+        else
+            grades = QBCore.Shared.Jobs[client.job.name].grades
+        end
+    end
+    if not grades then
+        return {}
     end
     return getRankInputValues(grades)
 end
@@ -118,8 +184,9 @@ RegisterNetEvent("QBCore:Client:OnPlayerLoaded", function()
 end)
 
 RegisterNetEvent("qb-clothes:client:CreateFirstCharacter", function()
-    QBCore.Functions.GetPlayerData(function(pd)
-        PlayerData = pd
+    if usingQBX then
+        -- QBX Core method - GetPlayerData is synchronous
+        PlayerData = exports.qbx_core:GetPlayerData() or {}
         setClientParams()
         InitializeCharacter(Framework.GetGender(true), function()
             -- Appearance completed callback
@@ -128,7 +195,20 @@ RegisterNetEvent("qb-clothes:client:CreateFirstCharacter", function()
             -- Appearance cancelled callback
             TriggerEvent('qbx_core:client:appearanceCancelled')
         end)
-    end)
+    elseif QBCore and QBCore.Functions then
+        -- QB Core method - uses callback
+        QBCore.Functions.GetPlayerData(function(pd)
+            PlayerData = pd
+            setClientParams()
+            InitializeCharacter(Framework.GetGender(true), function()
+                -- Appearance completed callback
+                TriggerEvent('qbx_core:client:appearanceCompleted')
+            end, function()
+                -- Appearance cancelled callback
+                TriggerEvent('qbx_core:client:appearanceCancelled')
+            end)
+        end)
+    end
 end)
 
 function Framework.CachePed()

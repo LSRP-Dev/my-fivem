@@ -1,20 +1,57 @@
 if not Framework.QBCore() then return end
 
 -- Try QBX Core first, then fall back to QB Core
+-- Wait for framework to be ready (handles timing issues during resource startup)
 local QBCore
 local usingQBX = false
-if GetResourceState('qbx_core') == 'started' then
-    -- Use QBX Core
-    QBCore = exports.qbx_core
-    usingQBX = true
-    print("^2[illenium-appearance] Using QBX Core on server^7")
-elseif GetResourceState('qb-core') == 'started' then
-    -- Use QB Core
-    QBCore = exports["qb-core"]:GetCoreObject()
-    print("^2[illenium-appearance] Using QB Core on server^7")
-else
+local maxWaitTime = 10000 -- 10 seconds max wait
+local waitTime = 0
+local waitInterval = 100 -- Check every 100ms
+
+-- Wait for qbx_core to be ready
+while waitTime < maxWaitTime do
+    local qbxState = GetResourceState('qbx_core')
+    if qbxState == 'started' then
+        -- Use QBX Core
+        QBCore = exports.qbx_core
+        usingQBX = true
+        print("^2[illenium-appearance] Using QBX Core on server^7")
+        break
+    elseif qbxState == 'starting' then
+        -- Still starting, wait a bit
+        Wait(waitInterval)
+        waitTime = waitTime + waitInterval
+    else
+        -- Not found or stopped, check for qb-core instead
+        break
+    end
+end
+
+-- If qbx_core not found, try qb-core
+if not QBCore then
+    waitTime = 0
+    while waitTime < maxWaitTime do
+        local qbState = GetResourceState('qb-core')
+        if qbState == 'started' then
+            -- Use QB Core
+            QBCore = exports["qb-core"]:GetCoreObject()
+            print("^2[illenium-appearance] Using QB Core on server^7")
+            break
+        elseif qbState == 'starting' then
+            -- Still starting, wait a bit
+            Wait(waitInterval)
+            waitTime = waitTime + waitInterval
+        else
+            -- Not found
+            break
+        end
+    end
+end
+
+-- Final check
+if not QBCore then
     -- No compatible framework found
-    print("^1[illenium-appearance] No compatible QB framework found on server!^7")
+    print("^1[illenium-appearance] No compatible QB framework found on server! (qbx_core state: " .. tostring(GetResourceState('qbx_core')) .. ", qb-core state: " .. tostring(GetResourceState('qb-core')) .. ")^7")
     return
 end
 

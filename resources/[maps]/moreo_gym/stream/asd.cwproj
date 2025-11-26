@@ -1,0 +1,32 @@
+<CodeWalkerProject>
+  <Name>New CodeWalker Project</Name>
+  <Version value="1" />
+  <YmapFilenames>
+    <Item>apa_bt1_01_strm_0.ymap</Item>
+    <Item>apa_ss1_occl_01.ymap</Item>
+    <Item>moreo_gym_milo.ymap</Item>
+  </YmapFilenames>
+  <YtypFilenames>
+    <Item>moreo_gym.ytyp</Item>
+  </YtypFilenames>
+  <YbnFilenames>
+    <Item>moreo_gym_col.ybn</Item>
+  </YbnFilenames>
+  <YndFilenames />
+  <YnvFilenames />
+  <TrainsFilenames />
+  <ScenarioFilenames />
+  <AudioRelFilenames />
+  <YdrFilenames>
+    <Item>bt1_01_crnrb2.ydr</Item>
+    <Item>moreo_gym_desk.ydr</Item>
+    <Item>moreo_gym_lights.ydr</Item>
+    <Item>moreo_gym_managerdesk.ydr</Item>
+    <Item>moreo_gym_mirror.ydr</Item>
+    <Item>moreo_gym_shell.ydr</Item>
+    <Item>moreo_gym_stairs.ydr</Item>
+  </YdrFilenames>
+  <YddFilenames />
+  <YftFilenames />
+  <YtdFilenames />
+</CodeWalkerProject>

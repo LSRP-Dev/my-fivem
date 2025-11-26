@@ -11,6 +11,14 @@ const SETTINGS = {
   ROD_CAST_CHALLENGE_ACCELERATION: 0.0001,
   BAIT_HOLD_CHALLENGE_TIME: 500,
   DYNAMIC_MINIGAME_POSITION: true,
+  // Catch rate percentages by rarity
+  CATCH_RATES: {
+    common: 60,      // 60% chance
+    uncommon: 25,    // 25% chance
+    rare: 10,        // 10% chance
+    epic: 4,         // 4% chance
+    legendary: 1,    // 1% chance
+  },
   FISHES: {
     fish: {
       itemName: "fish",

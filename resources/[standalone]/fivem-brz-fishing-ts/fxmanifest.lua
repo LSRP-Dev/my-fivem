@@ -14,8 +14,12 @@ ox_libs {
 }
 
 server_script 'dist/server/**/*.js'
+server_script 'server/fishmarket.lua'
+server_script 'server/fishing-rarity.lua'
 
 client_script 'dist/client/**/*.js'
+client_script 'client/fishmarket.lua'
+client_script 'client/fishingspots.lua'
 
 ui_page 'nui/fishing.html'
 

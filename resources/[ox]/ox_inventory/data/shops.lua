@@ -9,6 +9,8 @@ return {
 			{ name = 'cola', price = 10 },
 			{ name = 'fishingrod1', price = 500 },
 			{ name = 'commonbait', price = 25 },
+			{ name = 'fishingrod2', price = 1500 },
+			{ name = 'premiumbait', price = 150 },
 		}, locations = {
 			vec3(25.7, -1347.3, 29.49),
 			vec3(-3038.71, 585.9, 7.9),
@@ -166,6 +168,27 @@ return {
 		},
 		model = {
 			`prop_vend_soda_02`, `prop_vend_fridge01`, `prop_vend_water_01`, `prop_vend_soda_01`
+		}
+	},
+
+	FishMarket = {
+		name = 'Fish Market',
+		blip = {
+			id = 68, colour = 3, scale = 0.8
+		},
+		inventory = {
+			{ name = 'fishingrod2', price = 1500 },
+			{ name = 'fishingrod3', price = 5000 },
+			{ name = 'premiumbait', price = 150 },
+			{ name = 'legendarybait', price = 500 },
+		},
+		locations = {
+			vec3(-1847.98, -1193.15, 14.30), -- Del Perro Pier
+			vec3(-1598.84, 5200.18, 4.31), -- Paleto Bay docks
+		},
+		targets = {
+			{ loc = vec3(-1847.98, -1193.15, 14.30), length = 1.5, width = 1.5, heading = 320.0, minZ = 14.0, maxZ = 15.0, distance = 2.0 },
+			{ loc = vec3(-1598.84, 5200.18, 4.31), length = 1.5, width = 1.5, heading = 45.0, minZ = 4.0, maxZ = 5.0, distance = 2.0 },
 		}
 	}
 }

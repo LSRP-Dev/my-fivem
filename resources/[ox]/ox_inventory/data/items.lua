@@ -3955,5 +3955,47 @@ return {
         stack = true,
         consume = 0,
     },
+
+    -- Tiered Fishing Equipment
+    ['fishingrod2'] = {
+        label = 'Advanced Fishing Rod',
+        consume = 0,
+        stack = false,
+        weight = 90,
+        description = 'A better quality rod that makes fishing easier and increases rare catch chances',
+        client = {
+            image = 'fishingrod.png'
+        }
+    },
+    ['fishingrod3'] = {
+        label = 'Professional Fishing Rod',
+        consume = 0,
+        stack = false,
+        weight = 100,
+        description = 'Top-tier fishing rod for serious anglers. Significantly increases rare and legendary catch chances',
+        client = {
+            image = 'fishingrod.png'
+        }
+    },
+    ['premiumbait'] = {
+        label = 'Premium Bait',
+        consume = 1,
+        stack = true,
+        weight = 8,
+        description = 'High-quality bait that attracts rare and epic fish',
+        client = {
+            image = 'commonbait.png'
+        }
+    },
+    ['legendarybait'] = {
+        label = 'Legendary Bait',
+        consume = 1,
+        stack = true,
+        weight = 10,
+        description = 'The finest bait money can buy. Greatly increases your chance of catching legendary fish',
+        client = {
+            image = 'commonbait.png'
+        }
+    },
 }
 

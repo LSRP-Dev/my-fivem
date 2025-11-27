@@ -5804,7 +5804,7 @@ return {
     stack = false,
     close = false,
     client = {
-        image = 'tablet.png',
+        image = 'inventoryitem.png',
     }
 },
 }

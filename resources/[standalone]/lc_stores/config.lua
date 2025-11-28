@@ -663,6 +663,68 @@ Config.market_types = {
 			['color'] = 4,
 			['scale'] = 0.6,
 		}
+	},
+
+	['gasstation'] = {
+		['stock_capacity'] = 200,
+		['max_employees'] = 3,
+		['required_job'] = {},
+		['upgrades'] = {
+			['stock'] = {
+				['price'] = 10000,
+				['level_reward'] = {
+					[0] = 0,
+					[1] = 50,
+					[2] = 100,
+					[3] = 150,
+					[4] = 200,
+					[5] = 300,
+				}
+			},
+			['truck'] = {
+				['price'] = 15000,
+				['level_reward'] = {
+					[0] = 0,
+					[1] = 25,
+					[2] = 50,
+					[3] = 100,
+					[4] = 200,
+					[5] = 300,
+				}
+			},
+			['relationship'] = {
+				['price'] = 12000,
+				['level_reward'] = {
+					[0] = 0,
+					[1] = 5,
+					[2] = 10,
+					[3] = 15,
+					[4] = 25,
+					[5] = 40,
+				}
+			},
+		},
+		['trucks'] = {
+			[0] = 'speedo',
+			[1] = 'gburrito',
+			[2] = 'mule',
+			[3] = 'mule3',
+			[4] = 'pounder',
+			[5] = 'pounder2'
+		},
+		['max_purchasable_categories'] = 3,
+		['categories'] = {
+			"gas_station_items", "gas_station_snacks", "gas_station_drinks"
+		},
+		['default_categories'] = {
+			"gas_station_items", "gas_station_snacks", "gas_station_drinks"
+		},
+		['blips'] = {
+			['id'] = 361,
+			['name'] = "Gas Station",
+			['color'] = 1,
+			['scale'] = 0.7,
+		}
 	}
 }
 
@@ -1335,6 +1397,137 @@ Config.market_categories = {
 				['amount_to_delivery'] = 2,
 				['img'] = 'armor.png',
 			}
+		}
+	},
+
+	['gas_station_items'] = {
+		['page_name'] = "Gas Station Items",
+		['page_desc'] = "Essential items for your vehicle and travel needs",
+		['page_icon'] = '<img src="img/categories/utilities-icon.png" style="padding:15px">',
+		['page_img'] = 'img/categories/utilities.png',
+		['category_buy_price'] = 5000,
+		['category_sell_price'] = 2500,
+		['items'] = {
+			['jerry_can'] = {
+				['name'] = "Jerry Can",
+				['price_to_customer'] = 200,
+				['price_to_customer_min'] = 100,
+				['price_to_customer_max'] = 400,
+				['price_to_export'] = 150,
+				['price_to_owner'] = 100,
+				['amount_to_owner'] = 10,
+				['amount_to_delivery'] = 10,
+				['img'] = 'jerry_can.png',
+			},
+			['repairkit'] = {
+				['name'] = "Repair Kit",
+				['price_to_customer'] = 250,
+				['price_to_customer_min'] = 125,
+				['price_to_customer_max'] = 500,
+				['price_to_export'] = 225,
+				['price_to_owner'] = 200,
+				['amount_to_owner'] = 5,
+				['amount_to_delivery'] = 5,
+				['img'] = 'repairkit.png',
+			},
+			['cleaningkit'] = {
+				['name'] = "Cleaning Kit",
+				['price_to_customer'] = 150,
+				['price_to_customer_min'] = 75,
+				['price_to_customer_max'] = 300,
+				['price_to_export'] = 135,
+				['price_to_owner'] = 125,
+				['amount_to_owner'] = 5,
+				['amount_to_delivery'] = 5,
+				['img'] = 'cleaningkit.png',
+			},
+		}
+	},
+
+	['gas_station_snacks'] = {
+		['page_name'] = "Snacks",
+		['page_desc'] = "Quick snacks and treats for the road",
+		['page_icon'] = '<img src="img/categories/food-icon.png" style="padding:15px">',
+		['page_img'] = 'img/categories/food.png',
+		['category_buy_price'] = 3000,
+		['category_sell_price'] = 1500,
+		['items'] = {
+			['sandwich'] = {
+				['name'] = "Sandwich",
+				['price_to_customer'] = 3,
+				['price_to_customer_min'] = 1,
+				['price_to_customer_max'] = 6,
+				['price_to_export'] = 4,
+				['price_to_owner'] = 2,
+				['amount_to_owner'] = 35,
+				['amount_to_delivery'] = 35,
+				['img'] = 'sandwich.png',
+			},
+			['twerks_candy'] = {
+				['name'] = "Twerks",
+				['price_to_customer'] = 3,
+				['price_to_customer_min'] = 1,
+				['price_to_customer_max'] = 6,
+				['price_to_export'] = 4,
+				['price_to_owner'] = 2,
+				['amount_to_owner'] = 35,
+				['amount_to_delivery'] = 35,
+				['img'] = 'twerks_candy.png',
+			},
+			['snikkel_candy'] = {
+				['name'] = "Snikkel",
+				['price_to_customer'] = 3,
+				['price_to_customer_min'] = 1,
+				['price_to_customer_max'] = 6,
+				['price_to_export'] = 4,
+				['price_to_owner'] = 2,
+				['amount_to_owner'] = 35,
+				['amount_to_delivery'] = 35,
+				['img'] = 'snikkel_candy.png',
+			},
+	},
+
+	['gas_station_drinks'] = {
+		['page_name'] = "Drinks",
+		['page_desc'] = "Refreshing beverages for your journey",
+		['page_icon'] = '<img src="img/categories/drinks-icon.png" style="padding:15px">',
+		['page_img'] = 'img/categories/drinks.png',
+		['category_buy_price'] = 3000,
+		['category_sell_price'] = 1500,
+		['items'] = {
+			['water_bottle'] = {
+				['name'] = "Bottle of Water",
+				['price_to_customer'] = 4,
+				['price_to_customer_min'] = 2,
+				['price_to_customer_max'] = 8,
+				['price_to_export'] = 3,
+				['price_to_owner'] = 3,
+				['amount_to_owner'] = 35,
+				['amount_to_delivery'] = 35,
+				['img'] = 'water_bottle.png',
+			},
+			['coffee'] = {
+				['name'] = "Coffee",
+				['price_to_customer'] = 4,
+				['price_to_customer_min'] = 2,
+				['price_to_customer_max'] = 8,
+				['price_to_export'] = 3,
+				['price_to_owner'] = 3,
+				['amount_to_owner'] = 35,
+				['amount_to_delivery'] = 35,
+				['img'] = 'coffee.png',
+			},
+			['kurkakola'] = {
+				['name'] = "Cola",
+				['price_to_customer'] = 4,
+				['price_to_customer_min'] = 2,
+				['price_to_customer_max'] = 8,
+				['price_to_export'] = 3,
+				['price_to_owner'] = 3,
+				['amount_to_owner'] = 35,
+				['amount_to_delivery'] = 35,
+				['img'] = 'cola.png',
+			},
 		}
 	},
 }

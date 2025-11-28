@@ -229,8 +229,8 @@ Config.MechanicLocations = {
     }
     },
   DanksShop = {
-    type = "self service",
-    job = "self service",
+    type = "self services",
+    job = "self services",
     jobManagementRanks = {4},
     logo = "ls_customs.png",
     commission = 0, -- %, 10 = 10%

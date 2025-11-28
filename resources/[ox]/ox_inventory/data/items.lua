@@ -141,6 +141,48 @@ return {
         }
     },
 
+    ['iphone'] = {
+        label = 'iPhone',
+        weight = 190,
+        stack = false,
+        consume = 0,
+        client = {
+            image = 'iphone.png',
+            add = function(total)
+                if total > 0 then
+                    pcall(function() return exports.npwd:setPhoneDisabled(false) end)
+                end
+            end,
+
+            remove = function(total)
+                if total < 1 then
+                    pcall(function() return exports.npwd:setPhoneDisabled(true) end)
+                end
+            end
+        }
+    },
+
+    ['samsungphone'] = {
+        label = 'Samsung S10',
+        weight = 190,
+        stack = false,
+        consume = 0,
+        client = {
+            image = 'samsungphone.png',
+            add = function(total)
+                if total > 0 then
+                    pcall(function() return exports.npwd:setPhoneDisabled(false) end)
+                end
+            end,
+
+            remove = function(total)
+                if total < 1 then
+                    pcall(function() return exports.npwd:setPhoneDisabled(true) end)
+                end
+            end
+        }
+    },
+
     ['mustard'] = {
         label = 'Mustard',
         weight = 500,

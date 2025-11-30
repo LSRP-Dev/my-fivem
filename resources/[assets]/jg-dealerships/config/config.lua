@@ -253,45 +253,6 @@ Config.DealershipLocations = {
     societyPurchaseJobWhitelist = {},
     societyPurchaseGangWhitelist = {},
   },
-  ["truck"] = {
-    type = "owned", -- or "owned", "self-service"
-    openShowroom = {
-      coords = vector3(1214.37, -3204.53, 6.03),
-      size = 5
-    },
-    openManagement = {
-      coords = vector3(1184.45, -3179.27, 7.1),
-      size = 5
-    },
-    sellVehicle = {
-      coords = vector3(1196.75, -3205.31, 6.0),
-      size = 5
-    },
-    purchaseSpawn = vector4(1196.75, -3205.31, 6.0, 91.12),
-    testDriveSpawn = vector4(1196.75, -3205.31, 6.0, 91.12),
-    camera = {
-      name = "Truck",
-      coords = vector4(-1267.0, -3013.14, -48.5, 310.96),
-      positions = {7.5, 12.0, 15.0, 12.0}
-    },
-    categories = {"vans", "commercial", "industrial"},
-    enableSellVehicle = true, -- Allow players to sell vehicles back to dealer
-    sellVehiclePercent = 0.6,  -- 60% of current sale price
-    enableTestDrive = true,
-    enableFinance = true,
-    hideBlip = false,
-    blip = {
-      id = 477,
-      color = 2,
-      scale = 0.6
-    },
-    hideMarkers = false,
-    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
-    showroomJobWhitelist = {},
-    showroomGangWhitelist = {},
-    societyPurchaseJobWhitelist = {},
-    societyPurchaseGangWhitelist = {},
-  },
 }
 
 -- Commands

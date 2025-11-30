@@ -1,4 +1,4 @@
-name: Deploy to ZAP Hosting (Fast)
+name: Deploy to ZAP Hosting (Stable & Fast)
 
 on:
   push:
@@ -7,46 +7,63 @@ on:
       - 'resources/[EUP]/**'
       - 'resources/**/eup-stream/**'
       - 'resources/**/stream/**'
+      - '.ftp-deploy-sync-state.json'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Upload to ZAP (FAST)
+      - name: Upload to ZAP (Stable)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.2
         with:
           server: ${{ secrets.ZAP_HOST }}
           username: ${{ secrets.ZAP_USER }}
           password: ${{ secrets.ZAP_PASS }}
 
-          server-dir: /g686818/fivem/Qbox_052EBB.base/resources/
-          local-dir: ./resources/
+          # Use SFTP instead of FTP (MUCH more stable)
+          protocol: sftp
+          port: 22
 
-          protocol: ftp
-          port: 21
+          # What to upload
+          local-dir: ./resources/
+          server-dir: /g686818/fivem/Qbox_052EBB.base/resources/
+
+          # Enables incremental sync instead of full uploads
+          state-name: ftp-sync-state.json
+
+          # Increase timeout so large directories don't crash
+          timeout: 300000
+
+          # Don’t wipe files on ZAP
           dangerous-clean-slate: false
 
+          # Exclude heavy folders
           exclude: |
             **/node_modules/**
             **/.github/**
             **/.git/**
-            **/README.md
             **/LICENSE**
+            **/README.md
 
-            # Ignore bracketed folders in GitHub repo
-            resources/[standalone]/**
+            # Local bracketed folders (GitHub repo)
             resources/[EUP]/**
+            resources/[standalone]/**
 
-            # Ignore actual folders on ZAP Hosting (brackets removed)
-            resources/standalone/**
+            # ZAP may remove the brackets on upload
             resources/EUP/**
+            resources/standalone/**
 
-            # Ignore EUP subfolders
-            resources/**/eup-stream/**
-            resources/**/stream/**
-
-            # Ignore ANY folder that contains brackets (generic rule)
+            # EUP subfolders
+            **/eup-stream/**
+            **/stream/**
+            
+            # Ignore ANY bracket folder
             **/[[]*[]]**
+
+            # Ignore sync state file
+            .ftp-deploy-sync-state.json
+            ftp-sync-state.json

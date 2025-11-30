@@ -1,4 +1,4 @@
-name: Deploy to ZAP Hosting (Stable & Fast)
+name: Deploy to ZAP Hosting (Stable FTPS)
 
 on:
   push:
@@ -17,31 +17,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Upload to ZAP (Stable)
+      - name: Upload to ZAP (FTPS Stable)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.2
         with:
           server: ${{ secrets.ZAP_HOST }}
           username: ${{ secrets.ZAP_USER }}
           password: ${{ secrets.ZAP_PASS }}
 
-          # Use SFTP instead of FTP (MUCH more stable)
-          protocol: sftp
-          port: 22
+          protocol: ftps
+          port: 21
 
-          # What to upload
+          timeout: 300000
+
           local-dir: ./resources/
           server-dir: /g686818/fivem/Qbox_052EBB.base/resources/
 
-          # Enables incremental sync instead of full uploads
+          dangerous-clean-slate: false
           state-name: ftp-sync-state.json
 
-          # Increase timeout so large directories don't crash
-          timeout: 300000
-
-          # Don’t wipe files on ZAP
-          dangerous-clean-slate: false
-
-          # Exclude heavy folders
           exclude: |
             **/node_modules/**
             **/.github/**
@@ -49,21 +42,14 @@ jobs:
             **/LICENSE**
             **/README.md
 
-            # Local bracketed folders (GitHub repo)
             resources/[EUP]/**
             resources/[standalone]/**
 
-            # ZAP may remove the brackets on upload
             resources/EUP/**
             resources/standalone/**
 
-            # EUP subfolders
             **/eup-stream/**
             **/stream/**
-            
-            # Ignore ANY bracket folder
             **/[[]*[]]**
-
-            # Ignore sync state file
             .ftp-deploy-sync-state.json
             ftp-sync-state.json

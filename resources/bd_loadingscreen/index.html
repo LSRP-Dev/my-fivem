@@ -128,7 +128,15 @@
 </div>
     
     <div class="video-background video-container noselect">
-        <div id="background-video"></div>
+        <!-- Primary: Direct video file (most reliable) -->
+        <video id="background-video-file" autoplay muted loop playsinline style="display: none;">
+            <source src="video/background.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <!-- Fallback: YouTube player container -->
+        <div id="background-video-youtube"></div>
+        <!-- Fallback: Static background (if all video methods fail) -->
+        <div id="background-static" style="display: none; position: absolute; width: 100%; height: 100%; background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); z-index: -100;"></div>
         </div>
         
         <!--Video is changable. When you are inserting the video make sure that it is in embed format 

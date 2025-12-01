@@ -1,7 +1,35 @@
 
-local QT = exports["qt-library"]:Load()
+local QT = nil
 local WorkShops = {}
 local Recipes = {}
+
+-- Load qt-library with error handling
+local function LoadQTLibrary()
+    local maxAttempts = 10
+    local attempt = 0
+    
+    while attempt < maxAttempts do
+        local success, result = pcall(function()
+            return exports["qt-library"]:Load()
+        end)
+        
+        if success and result then
+            QT = result
+            return true
+        end
+        
+        attempt = attempt + 1
+        Wait(500)
+    end
+    
+    print("^1[qt-crafting-v2] ERROR: Failed to load qt-library after " .. maxAttempts .. " attempts. Make sure qt-library is started.^0")
+    return false
+end
+
+-- Try to load qt-library
+CreateThread(function()
+    LoadQTLibrary()
+end)
 
 AddEventHandler('onServerResourceStart', function(resourceName)
     if resourceName == GetCurrentResourceName() then
@@ -50,14 +78,22 @@ LoadData = function()
 
 end
 
-QT.RegisterServerCall("qt_crafting-CheckPerm", function(source, cb, perm)
-    local identifier = QT.GetIdentifier(Shared.PlayersLicense, source)
-    if Shared.Commands.perms[perm][identifier] then 
-        cb(true) 
-    else
-        cb(false)
-    end
-end)
+if QT then
+    QT.RegisterServerCall("qt_crafting-CheckPerm", function(source, cb, perm)
+        if not QT.GetIdentifier then
+            cb(false)
+            return
+        end
+        local identifier = QT.GetIdentifier(Shared.PlayersLicense, source)
+        if Shared.Commands.perms[perm] and Shared.Commands.perms[perm][identifier] then 
+            cb(true) 
+        else
+            cb(false)
+        end
+    end)
+else
+    print("^1[qt-crafting-v2] WARNING: qt-library not loaded, CheckPerm callback not registered^0")
+end
 
 local function GenerateTableID()
     local digits = '0123456789'
@@ -258,26 +294,30 @@ UpdateJSON = function(action)
     end
 end
 
-QT.RegisterServerCall("qt-crafting-CheckItems", function(source, cb, recipe)
-    local totalItems = #recipe
-    local itemsChecked = 0
-    
-    for _, data in ipairs(recipe) do
-        local amount = tonumber(data.amount)
-        local check = Core.HasItem(source, data.item, amount)
-        if not check then 
-            break  
-        else
-            itemsChecked = itemsChecked + 1
+if QT then
+    QT.RegisterServerCall("qt-crafting-CheckItems", function(source, cb, recipe)
+        local totalItems = #recipe
+        local itemsChecked = 0
+        
+        for _, data in ipairs(recipe) do
+            local amount = tonumber(data.amount)
+            local check = Core.HasItem(source, data.item, amount)
+            if not check then 
+                break  
+            else
+                itemsChecked = itemsChecked + 1
+            end
         end
-    end
-    
-    if itemsChecked == totalItems then
-        cb(true)
-    else
-        cb(false)
-    end
-end)
+        
+        if itemsChecked == totalItems then
+            cb(true)
+        else
+            cb(false)
+        end
+    end)
+else
+    print("^1[qt-crafting-v2] WARNING: qt-library not loaded, CheckItems callback not registered^0")
+end
 
 RegisterNetEvent("qt-crafting-GiveItem", function(data)
     local source = source

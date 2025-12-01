@@ -1,6 +1,6 @@
 Shared = {}
 Shared.Locale = "en"
-Shared.Framework = "esx" -- # esx, qb
+Shared.Framework = "qb" -- # esx, qb
 Shared.Target = "ox_target" -- # supports qb-target and ox_target
 Shared.LIBRARY_NOTIFY = true 
 Shared.ImagePath = "ox_inventory/web/images/" -- # where images for items will display

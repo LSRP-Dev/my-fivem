@@ -131,7 +131,8 @@ body {
 }
 
 .video-container iframe,
-.video-container #background-video {
+.video-container #background-video-file,
+.video-container #background-video-youtube {
     /* Make video to at least 100% wide and tall */
     min-width: 100%;
     min-height: 100%;
@@ -159,7 +160,18 @@ body {
     z-index: -100;
 }
 
-#background-video {
+#background-video-file {
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: -100;
+    object-fit: cover;
+}
+
+#background-video-youtube {
     width: 100vw;
     height: 100vh;
     position: absolute;

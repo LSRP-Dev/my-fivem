@@ -303,7 +303,7 @@ function playVapeHit()
         )
 
 
-        applyBuzzEffect()
+        -- applyBuzzEffect() -- Screen effect disabled
         relieveStress(STRESS_RELIEF)
 
         Wait(SMOKE_DURATION_MS)

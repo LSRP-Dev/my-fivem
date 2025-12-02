@@ -14,7 +14,7 @@ Jobs['burgershot'] = {
         vec3(-1208.55, -891.59, 12.97)
     },
     Blip = {
-        { sprite = 106, color = 2, scale = 0.5, label = 'Burger Shot', loc = vec3(-1190.53, -890.00, 13.89) },
+        { sprite = 106, color = 2, scale = 0.5, label = 'Burger Shot', loc = vector3(-1190.53, -890.00, 13.89) },
     },
     closedShops = {
         { ped = 'csb_burgerdrug', loc = vector4(-1196.36, -893.66, 13.89, 340), label = 'Burgershot Shop' }
@@ -195,10 +195,10 @@ Jobs['burgershot'] = {
             { loc = vector3(-1191.69, -894.97, 13.89), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 343, commission = 0.2, job = jobloc }
         },
         trays = { -- storages to place things for people
-            { label = 'Grab Food', loc = vec3(-1192.69, -893.55, 15.12), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 177, slots = 6, weight = 30000, job = jobloc },
-            { label = 'Grab Food', loc = vec3(-1196.87, -892.79, 15.22), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 326, slots = 6, weight = 30000, job = jobloc },
-            { label = 'Grab Food', loc = vec3(-1195.00, -893.25, 15.21), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 259, slots = 6, weight = 30000, job = jobloc },
-            { label = 'Grab Food', loc = vec3(-1190.80, -894.41, 15.41), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 271, slots = 6, weight = 30000, job = jobloc },
+            { label = 'Grab Food', loc = vector3(-1192.69, -893.55, 15.12), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 177, slots = 6, weight = 30000, job = jobloc },
+            { label = 'Grab Food', loc = vector3(-1196.87, -892.79, 15.22), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 326, slots = 6, weight = 30000, job = jobloc },
+            { label = 'Grab Food', loc = vector3(-1195.00, -893.25, 15.21), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 259, slots = 6, weight = 30000, job = jobloc },
+            { label = 'Grab Food', loc = vector3(-1190.80, -894.41, 15.41), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 271, slots = 6, weight = 30000, job = jobloc },
         },
         stash = { -- storages to place things
             { label = 'Store Products', loc = vector3(-1194.27, -895.92, 13.89), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 167, slots = 100, weight = 600000, job = jobloc },

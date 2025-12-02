@@ -1,6 +1,6 @@
 Config = {}
 Jobs = {}                              -- no touch if you do I will need therapy even more.
-Config.Debug = false                    -- Enables zone debug **do not use in production**
+Config.Debug = true                     -- Enables zone debug **do not use in production**
 Config.AutorunSQL = true               -- Recommended to leave this true, otherwise you must maintain the database
 Config.UseClientPeds = false           -- If you want to spawn peds on the client instead of the server (not recommended)
 Config.Target = 'ox'                   -- qb or ox

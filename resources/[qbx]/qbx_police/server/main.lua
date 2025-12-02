@@ -325,7 +325,8 @@ if not IsUsingXTPrison then
         if GetResourceState('pickle_prisons') == 'started' then
             -- Convert months to minutes (1 month = 30 days = 43200 minutes)
             local timeInMinutes = time * 43200
-            -- Trigger the pickle_prisons jail event (source is the officer, target is the player being jailed)
+            -- Trigger the pickle_prisons jail event from officer's context
+            -- Use TriggerEvent to preserve source context (officer who is jailing)
             TriggerEvent('pickle_prisons:jailPlayer', targetPlayer.PlayerData.source, timeInMinutes, "default")
         else
             TriggerClientEvent('police:client:SendToJail', targetPlayer.PlayerData.source, time)

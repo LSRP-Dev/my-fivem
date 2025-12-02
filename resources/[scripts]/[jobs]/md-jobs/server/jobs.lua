@@ -68,12 +68,18 @@ local function oxPrep()
                 stashName,
                 stashName,
                 trayConfig.slots,
-                trayConfig.weight
+                trayConfig.weight,
+                nil, -- owner (nil = shared)
+                { [jobName] = 0 }, -- groups (require job, grade 0 minimum)
+                trayConfig.loc -- coords for distance validation
             )
         end
         local stashLocations = jobConfig.locations.stash or {}
         for stashIndex, stashConfig in pairs(stashLocations) do
             local stashName = jobLabel .. ' stash ' .. stashIndex
+            -- Register stash without coords to avoid distance validation issues
+            -- Distance is already checked by md-jobs zone system
+            -- Groups check is handled by md-jobs HasJob() function on client side
             exports.ox_inventory:RegisterStash(
                 stashName,
                 stashName,

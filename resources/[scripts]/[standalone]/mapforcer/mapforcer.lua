@@ -25,9 +25,9 @@ local maps = {
     'Mirror-Park-Clubhouse',
     'Meetingroomprison',
     'Prisoncanteen',
-    'Prisonmainblock'
+    'Prisonmainblock',
+    'uniqx_burgershot'
 
-    
 }
 
 CreateThread(function()

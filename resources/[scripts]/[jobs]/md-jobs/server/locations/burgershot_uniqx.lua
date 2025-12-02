@@ -6,18 +6,18 @@ Jobs['burgershot'] = {
     closedShopsEnabled = true,
     automaticJobDuty = true,
     polyzone = {
-        vec3(-1175.25, -894.89, 13.85),
-        vec3(-1185.25, -901.6, 13.83),
-        vec3(-1187.4, -898.63, 13.83),
-        vec3(-1198.91, -905.37, 13.83),
-        vec3(-1208.06, -891.75, 13.85),
-        vec3(-1186.98, -877.53, 13.85)
+        vec3(-1198.80, -905.50, 13.83),
+        vec3(-1187.70, -899.27, 13.83),
+        vec3(-1184.82, -901.46, 13.83),
+        vec3(-1175.33, -894.91, 13.85),
+        vec3(-1186.88, -877.51, 13.85),
+        vec3(-1208.55, -891.59, 12.97)
     },
     Blip = {
-        { sprite = 106, color = 2, scale = 0.5, label = 'Burger Shot', loc = vec3(-1178.93, -888.79, 13.95) },
+        { sprite = 106, color = 2, scale = 0.5, label = 'Burger Shot', loc = vec3(-1190.53, -890.00, 13.89) },
     },
     closedShops = {
-        { ped = 'csb_burgerdrug', loc = vector4(-1194.88, -894.07, 12.89, 352), label = 'Burgershot Shop' }
+        { ped = 'csb_burgerdrug', loc = vector4(-1196.36, -893.66, 13.89, 340), label = 'Burgershot Shop' }
     },
     closedShopItems = {
         bs_fries = { name = 'bs_fries', price = 5 },
@@ -82,7 +82,7 @@ Jobs['burgershot'] = {
         },
 
         Van = {
-            burgershot = { model = 'burrito', label = 'Burrito', plate = 'BSCater', livery = 3, loc = vec4(-1171.46, -880.38, 14.1, 302.39) },
+            burgershot = { model = 'burrito', label = 'Burrito', plate = 'BSCater', livery = 3, loc = vec4(-1205.79, -901.60, 13.41, 34) },
         }
 
     },
@@ -107,102 +107,102 @@ Jobs['burgershot'] = {
         Crafter = {
             {
                 CraftData = { type = 'soda', targetLabel = 'Pour Drinks', menuLabel = 'Pour Drinks' },
-                loc = vector3(-1190.71, -898.77, 13.97),
+                loc = vector3(-1190.82, -898.10, 13.89),
                 l = 0.65,
                 w = 0.5,
                 lwr = 0.25,
                 upr = 0.25,
-                r = 180,
+                r = 217,
                 job = jobloc
             },
             {
                 CraftData = { type = 'coffee', targetLabel = 'Pour Coffee', menuLabel = 'Pour Coffee' },
-                loc = vector3(-1190.71, -898.77, 13.97),
+                loc = vector3(-1193.03, -896.32, 13.89),
                 l = 0.7,
                 w = 0.6,
                 lwr = 0.25,
                 upr = 0.25,
-                r = 180,
+                r = 159,
                 job = jobloc
             },
             {
                 CraftData = { type = 'fryer', targetLabel = 'Fry', menuLabel = 'Fry' },
-                loc = vector3(-1196.42, -899.86, 13.91),
+                loc = vector3(-1194.95, -899.61, 13.89),
                 l = 0.75,
                 w = 0.5,
                 lwr = 0.5,
                 upr = 0.5,
-                r = 180,
+                r = 158,
                 job = jobloc
             },
             {
                 CraftData = { type = 'grill', targetLabel = 'Grill', menuLabel = 'Grill' },
-                loc = vector3(-1196.06, -897.27, 14.20),
+                loc = vector3(-1195.24, -898.21, 13.89),
                 l = 2.0,
                 w = 0.7,
                 lwr = 0.5,
                 upr = 0.5,
-                r = 180,
+                r = 341,
                 job = jobloc
             },
             {
                 CraftData = { type = 'cuttingboard', targetLabel = 'Chop', menuLabel = 'Chop' },
-                loc = vector3(-1194.11, -900.54, 13.80),
+                loc = vector3(-1196.87, -897.72, 13.89),
                 l = 2.5,
                 w = 2.5,
                 lwr = 0.10,
                 upr = 0.25,
-                r = 180,
+                r = 351,
                 job = jobloc
             },
             {
                 CraftData = { type = 'assembly', targetLabel = 'Assemble', menuLabel = 'Assemble' },
-                loc = vector3(-1201.40, -894.98, 13.80),
+                loc = vector3(-1200.08, -894.82, 13.89),
                 l = 2.7,
                 w = 1.4,
                 lwr = 0.5,
                 upr = 0.5,
-                r = 180,
+                r = 121,
                 job = jobloc
             },
         },
         Stores = {
             {
                 StoreData = { type = 'fridge', targetLabel = 'Fridge', menuLabel = 'Fridge' },
-                loc = vector3(-1196.67, -900.73, 13.99),
+                loc = vector3(-1196.17, -901.54, 13.89),
                 l = 0.7,
                 w = 0.5,
                 lwr = 0.75,
                 upr = 1.25,
-                r = 180,
+                r = 349,
                 job = jobloc
             },
             {
                 StoreData = { type = 'ingridients', targetLabel = 'Ingredients ', menuLabel = 'Ingredients' },
-                loc = vector3(-1201.24, -895.84, 13.8),
+                loc = vector3(-1202.43, -895.48, 13.89),
                 l = 0.7,
                 w = 0.5,
                 lwr = 0.75,
                 upr = 1.25,
-                r = 180,
+                r = 300,
                 job = jobloc
             },
         },
         Tills = {
-            { loc = vector3(-1197.47, -892.64, 14.0), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 168.27, commission = 0.2, job = jobloc },
-            { loc = vector3(-1195.57, -893.16, 14.0), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 163.01, commission = 0.2, job = jobloc },
-            { loc = vector3(-1193.41, -893.74, 14.0), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 165.65, commission = 0.2, job = jobloc },
-            { loc = vector3(-1191.62, -894.18, 14.0), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 162.22, commission = 0.2, job = jobloc }
+            { loc = vector3(-1197.79, -893.26, 13.89), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 344, commission = 0.2, job = jobloc },
+            { loc = vector3(-1195.74, -893.82, 13.89), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 352, commission = 0.2, job = jobloc },
+            { loc = vector3(-1193.62, -894.45, 13.89), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 344, commission = 0.2, job = jobloc },
+            { loc = vector3(-1191.69, -894.97, 13.89), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 343, commission = 0.2, job = jobloc }
         },
         trays = { -- storages to place things for people
-            { label = 'Grab Food', loc = vec3(-1190.78, -894.45, 14.0), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 180, slots = 6, weight = 30000, job = jobloc },
-            { label = 'Grab Food', loc = vec3(-1192.97, -893.81, 14.0), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 180, slots = 6, weight = 30000, job = jobloc },
-            { label = 'Grab Food', loc = vec3(-1194.93, -893.41, 14.0), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 180, slots = 6, weight = 30000, job = jobloc },
-            { label = 'Grab Food', loc = vec3(-1196.44, -892.81, 14.0), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 180, slots = 6, weight = 30000, job = jobloc },
+            { label = 'Grab Food', loc = vec3(-1192.69, -893.55, 15.12), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 177, slots = 6, weight = 30000, job = jobloc },
+            { label = 'Grab Food', loc = vec3(-1196.87, -892.79, 15.22), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 326, slots = 6, weight = 30000, job = jobloc },
+            { label = 'Grab Food', loc = vec3(-1195.00, -893.25, 15.21), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 259, slots = 6, weight = 30000, job = jobloc },
+            { label = 'Grab Food', loc = vec3(-1190.80, -894.41, 15.41), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 271, slots = 6, weight = 30000, job = jobloc },
         },
         stash = { -- storages to place things
-            { label = 'Store Products', loc = vector3(-1194.99, -896.28, 14.13), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 180, slots = 100, weight = 600000, job = jobloc },
-            { label = 'Store Products', loc = vector3(-1195.96, -902.59, 13.85), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 180, slots = 100, weight = 600000, job = jobloc },
+            { label = 'Store Products', loc = vector3(-1194.27, -895.92, 13.89), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 167, slots = 100, weight = 600000, job = jobloc },
+            { label = 'Store Products', loc = vector3(-1195.39, -895.60, 13.89), l = 0.5, w = 0.5, lwr = 0.10, upr = 0.25, r = 161, slots = 100, weight = 600000, job = jobloc },
         },
 
     },

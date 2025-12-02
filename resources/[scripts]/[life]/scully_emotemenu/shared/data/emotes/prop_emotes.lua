@@ -8875,6 +8875,28 @@ return {
                     },
                 },
             },
+        },
+        {
+            Label = 'Shake Cocktail',
+            Command = 'cocktail',
+            Animation = 'shake_can_male',
+            Dictionary = 'anim@scripted@freemode@postertag@graffiti_spray@male@',
+            Options = {
+                Flags = {
+                    Loop = true,
+                    Move = false,
+                },
+                Props = {
+                    {
+                        Bone = 28422,
+                        Name = 'prop_bar_cockshaker',
+                        Placement = {
+                            vec3(0.0, 0.0, -0.20),
+                            vec3(0.0017365, 0.0, 0.0),
+                        },
+                    },
+                },
+            },
         }
     }
 }

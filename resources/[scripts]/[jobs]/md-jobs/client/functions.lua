@@ -821,10 +821,6 @@ function MakeStore(store, job, text, num)
 		Notify(Format(L.Error.no_job, job), 'error')
 		return
 	end
-	if Config.UseShops then
-		-- For ox_inventory shops, use the menu system instead
-		-- This matches the original behavior
-	end
 
 	for _, itemInfo in pairs(shopItems) do
 		table.insert(menuOptions, {

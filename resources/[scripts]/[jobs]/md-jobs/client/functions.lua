@@ -817,20 +817,13 @@ function MakeStore(store, job, text, num)
 		Notify('Something Went Wrong, Tell Your Dev To Check Stores For ' .. job, 'error')
 		return
 	end
-	if type(shopItems) == 'string' then
-		-- shopItems is the shopKey (e.g., "burgershot fridge")
-		-- ox_inventory will automatically use the nearest registered location
-		exports.ox_inventory:openInventory('shop', { type = shopItems })
-		return
-	end
 	if not job or GetJobName() ~= job then
 		Notify(Format(L.Error.no_job, job), 'error')
 		return
 	end
 	if Config.UseShops then
-		-- Shop should have been opened via ox_inventory if UseShops is enabled
-		-- If we reach here, something went wrong
-		return
+		-- For ox_inventory shops, use the menu system instead
+		-- This matches the original behavior
 	end
 
 	for _, itemInfo in pairs(shopItems) do

@@ -429,22 +429,8 @@ lib.callback.register('md-jobs:server:getShops', function(source, job, storeType
             exports['qb-inventory']:OpenShop(source, shopName)
             return true
         elseif Config.Inv == 'ox' then
-            local shopKey = job .. ' ' .. storeType
-            -- Get locations for this specific store type
-            local storeLocations = {}
-            for _, storeEntry in pairs(Jobs[job].locations.Stores) do
-                if storeEntry.StoreData.type == storeType and storeEntry.job == job then
-                    table.insert(storeLocations, storeEntry.loc)
-                end
-            end
-            -- Register shop on-demand (ox_inventory handles re-registration)
-            exports.ox_inventory:RegisterShop(shopKey, {
-                name      = shopKey,
-                inventory = Jobs[job].shops[storeType],
-                locations = storeLocations,
-                -- No groups requirement - client-side HasJob() already checks
-            })
-            return shopKey
+            -- Return shop items table - let client handle it
+            return Jobs[job].shops[storeType] or false
         end
     end
     return Jobs[job].shops[storeType] or false

@@ -64,14 +64,16 @@ local function oxPrep()
         local trayLocations = jobConfig.locations.trays or {}
         for trayIndex, trayConfig in pairs(trayLocations) do
             local stashName = jobLabel .. ' Tray ' .. trayIndex
+            -- Trays are public - anyone can access (no groups restriction)
+            -- Distance validation is handled by md-jobs zone system (no coords needed)
             exports.ox_inventory:RegisterStash(
                 stashName,
                 stashName,
                 trayConfig.slots,
                 trayConfig.weight,
                 nil, -- owner (nil = shared)
-                { [jobName] = 0 }, -- groups (require job, grade 0 minimum)
-                trayConfig.loc -- coords for distance validation
+                nil, -- groups (nil = public, anyone can access)
+                nil  -- coords (removed - md-jobs handles distance via zones)
             )
         end
         local stashLocations = jobConfig.locations.stash or {}
@@ -242,6 +244,9 @@ end
 --- @return nil
 local function setJobDuty(source, value)
     local Player = GetPlayer(source)
+    if not Player then
+        return
+    end
     if Config.Framework == 'qbx' then
         if Player.PlayerData.job.onduty ~= value then
             QBOX:SetJobDuty(source, value)
@@ -263,7 +268,7 @@ local function setJobDuty(source, value)
             end
         elseif Config.Framework == 'esx' then
             local job = Player.getJob()
-            if job.onDuty ~= value then
+            if job and job.onDuty ~= value then
                 Player.setJob(job.name, job.grade, value)
                 if value then
                     Notifys(source, L.Duty.on, 'info')

@@ -70,6 +70,27 @@ function HasTabletItem()
         return true
     end
 
+    -- Allow access if player is on duty for police/EMS jobs
+    if IsOnDuty() then
+        local jobName = GetJob()
+        local policeJobs = { "police", "bcso", "sasp" }
+        local emsJobs = { "ambulance" }
+        
+        -- Check if player has a police or EMS job
+        for _, job in ipairs(policeJobs) do
+            if jobName == job then
+                return true
+            end
+        end
+        
+        for _, job in ipairs(emsJobs) do
+            if jobName == job then
+                return true
+            end
+        end
+    end
+
+    -- Otherwise check for tablet item
     if GetResourceState("ox_inventory") == "started" then
         return (exports.ox_inventory:Search("count", Config.Item.Name) or 0) > 0
     end

@@ -1,0 +1,34 @@
+<CodeWalkerProject>
+  <Name>New CodeWalker Project</Name>
+  <Version value="1" />
+  <YmapFilenames>
+    <Item>hei_vb_18_long_0.ymap</Item>
+    <Item>hei_vb_18_strm_0.ymap</Item>
+    <Item>moreo-chips-shop--1.ymap</Item>
+    <Item>moreo_fishandchip_mlo.ymap</Item>
+    <Item>vb_occl_01.ymap</Item>
+  </YmapFilenames>
+  <YtypFilenames>
+    <Item>moreo_fishandchip.ytyp</Item>
+  </YtypFilenames>
+  <YbnFilenames>
+    <Item>hi@vb_18_0.ybn</Item>
+    <Item>moreo_fishandchip_col.ybn</Item>
+    <Item>vb_18_0.ybn</Item>
+  </YbnFilenames>
+  <YndFilenames />
+  <YnvFilenames />
+  <TrainsFilenames />
+  <ScenarioFilenames />
+  <AudioRelFilenames />
+  <YdrFilenames>
+    <Item>moreo_fishandchip_shell.ydr</Item>
+    <Item>vb_18_bld1.ydr</Item>
+    <Item>vb_18_detail.ydr</Item>
+    <Item>moreo_fishandchip_skirts.ydr</Item>
+    <Item>moreo_fishandchip_maindoor.ydr</Item>
+  </YdrFilenames>
+  <YddFilenames />
+  <YftFilenames />
+  <YtdFilenames />
+</CodeWalkerProject>

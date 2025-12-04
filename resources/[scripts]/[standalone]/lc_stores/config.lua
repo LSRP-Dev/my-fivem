@@ -15,7 +15,7 @@ Config.max_stores_per_player = 1				-- Maximum number of stores that each player
 Config.max_stores_employed = 2					-- Maximum number of stores that each player can be employed
 Config.has_stock_when_unowed = true				-- If true, the store stock will be full stock when there is no owner. If false, the store stock will be empty when there is no owner
 Config.max_jobs = 20							-- Max amount of jobs that each store can create
-Config.disable_rename_business = false 			-- Set this to true if you want to disable the function to rename the business
+Config.disable_rename_business = true 			-- Set this to true if you want to disable the function to rename the business
 Config.group_map_blips = true					-- true: will group all the blips into a single category in the map. false: all the blips will be grouped just by the name and icon
 Config.charge_import_money_before = true 		-- true: The money will be deducted from the store balance when the player starts the job. false: The money will be deducted only after the player finishes the job
 
@@ -726,12 +726,12 @@ Config.market_types = {
 			[4] = 'pounder',
 			[5] = 'pounder2'
 		},
-		['max_purchasable_categories'] = 5,		-- The max amount of categories that can be purchased
+		['max_purchasable_categories'] = 4,		-- The max amount of categories that can be purchased
 		['categories'] = {						-- Here you configure the categories available to purchase in your store
-			"food_market", "drink_market", "alcohol_market", "vape_market", "restaurant_supplies"
+			"food_market", "drink_market", "alcohol_market", "vape_market"
 		},
 		['default_categories'] = {				-- Here you can configure the categories available when the store has no owner
-			"food_market", "drink_market", "alcohol_market", "vape_market", "restaurant_supplies"
+			"food_market", "drink_market", "alcohol_market", "vape_market"
 		},
 		['blips'] = {							-- Create the blips on map
 			['id'] = 52,						-- Blip ID [Set this value 0 to dont have blip]

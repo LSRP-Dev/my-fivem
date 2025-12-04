@@ -4,9 +4,6 @@ on:
   push:
     branches: [ "main" ]
     paths-ignore:
-      - 'resources/[EUP]/**'
-      - 'resources/**/eup-stream/**'
-      - 'resources/**/stream/**'
       - '.ftp-deploy-sync-state.json'
 
 jobs:
@@ -27,7 +24,7 @@ jobs:
           protocol: ftp
           port: 21
 
-          timeout: 300000   # Prevents disconnects
+          timeout: 300000
 
           local-dir: ./resources/
           server-dir: /g686818/fivem/Qbox_052EBB.base/resources/
@@ -41,15 +38,3 @@ jobs:
             **/.git/**
             **/LICENSE**
             **/README.md
-
-            resources/[EUP]/**
-            resources/[standalone]/**
-
-            resources/EUP/**
-            resources/standalone/**
-
-            **/eup-stream/**
-            **/stream/**
-            **/[[]*[]]**
-            .ftp-deploy-sync-state.json
-            ftp-sync-state.json

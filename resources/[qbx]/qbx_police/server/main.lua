@@ -174,6 +174,39 @@ RegisterNetEvent('police:server:policeAlert', function(text, camId, playerSource
     local ped = GetPlayerPed(playerSource)
     local coords = GetEntityCoords(ped)
     local players = exports.qbx_core:GetQBPlayers()
+    
+    -- Get street name for location label
+    local street1, street2 = GetStreetNameAtCoord(coords.x, coords.y, coords.z)
+    local street1name = GetStreetNameFromHashKey(street1)
+    local street2name = GetStreetNameFromHashKey(street2)
+    local locationLabel = street1name
+    if street2name and street2name ~= "" then
+        locationLabel = street1name .. " " .. street2name
+    end
+    
+    -- Send dispatch to lb-tablet MDT
+    if GetResourceState('lb-tablet') == 'started' then
+        local dispatchData = {
+            job = "police",
+            priority = "medium",
+            code = "",
+            title = text or locale('info.new_call'),
+            description = text or "",
+            location = {
+                label = locationLabel ~= "" and locationLabel or "Unknown",
+                coords = vector2(coords.x, coords.y),
+            },
+            time = 120
+        }
+        
+        if camId then
+            dispatchData.description = dispatchData.description .. " | Camera ID: " .. tostring(camId)
+        end
+        
+        exports['lb-tablet']:AddDispatch(dispatchData)
+    end
+    
+    -- Send to existing client alerts
     for k, v in pairs(players) do
         if IsLeoAndOnDuty(v) then
             if camId then

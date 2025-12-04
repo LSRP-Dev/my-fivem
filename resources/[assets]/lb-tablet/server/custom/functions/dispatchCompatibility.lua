@@ -136,19 +136,36 @@ RegisterNetEvent("redutzu-mdt:server:addDispatchToMDT", function(dispatch)
     })
 end)
 
-RegisterNetEvent("police:server:policeAlert", function(title)
-    local src = source
+RegisterNetEvent("police:server:policeAlert", function(text, camId, playerSource)
+    local src = playerSource or source
     local playerPed = GetPlayerPed(src)
     local coords = GetEntityCoords(playerPed)
+    
+    -- Get street name for location label
+    local street1, street2 = GetStreetNameAtCoord(coords.x, coords.y, coords.z)
+    local street1name = GetStreetNameFromHashKey(street1)
+    local street2name = GetStreetNameFromHashKey(street2)
+    local locationLabel = street1name
+    if street2name and street2name ~= "" then
+        locationLabel = street1name .. " " .. street2name
+    end
+    
+    local title = text or "Dispatch"
+    local description = text or ""
+    
+    -- Include camera ID in description if provided
+    if camId then
+        description = description .. " | Camera ID: " .. tostring(camId)
+    end
 
     AddDispatch({
         job = "police",
         priority = "medium",
         code = "",
-        title = title or "Dispatch",
-        description = title or "",
+        title = title,
+        description = description,
         location = {
-            label = "Unknown",
+            label = locationLabel ~= "" and locationLabel or "Unknown",
             coords = vector2(coords.x, coords.y),
         },
         time = 120
@@ -172,4 +189,50 @@ RegisterNetEvent("hospital:server:ambulanceAlert", function(text)
         },
         time = 120
     })
+end)
+
+---@param dispatchOptions table Dispatch options with job, priority, title, description, location, etc.
+---@field job "police" | "ambulance" Required: Which job should receive the dispatch
+---@field priority "low" | "medium" | "high" Optional: Priority level (default: "medium")
+---@field code string Optional: 10-code or dispatch code
+---@field title string Required: Title of the dispatch
+---@field description string Optional: Description of the dispatch
+---@field location table Required: Location with label and coords
+---@field location.label string Required: Location label/street name
+---@field location.coords vector2 Required: Coordinates {x, y}
+---@field time number Optional: Duration in seconds (default: 120)
+---@field image string Optional: Image URL for the dispatch
+---@field fields table Optional: Additional fields array
+exports("AddDispatch", function(dispatchOptions)
+    if not dispatchOptions then
+        debugprint("AddDispatch export: dispatchOptions is required")
+        return false
+    end
+    
+    if not dispatchOptions.job or (dispatchOptions.job ~= "police" and dispatchOptions.job ~= "ambulance") then
+        debugprint("AddDispatch export: job must be 'police' or 'ambulance'")
+        return false
+    end
+    
+    if not dispatchOptions.title then
+        debugprint("AddDispatch export: title is required")
+        return false
+    end
+    
+    if not dispatchOptions.location or not dispatchOptions.location.coords then
+        debugprint("AddDispatch export: location with coords is required")
+        return false
+    end
+    
+    -- Set defaults
+    dispatchOptions.priority = dispatchOptions.priority or "medium"
+    dispatchOptions.code = dispatchOptions.code or ""
+    dispatchOptions.description = dispatchOptions.description or ""
+    dispatchOptions.location.label = dispatchOptions.location.label or "Unknown"
+    dispatchOptions.time = dispatchOptions.time or 120
+    
+    -- Call internal AddDispatch function
+    AddDispatch(dispatchOptions)
+    
+    return true
 end)

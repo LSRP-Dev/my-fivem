@@ -327,13 +327,21 @@ Config.UnrevokedItems = { -- Items to skip when confiscating the player's invent
 
 Config.Breakout = {
     alert = true, -- This will start the siren, and notify all law enforcement with permission.
-    time = 120, -- In seconds, at the end of this time, the tunnel will close for other people to climb into.
+    time = 60, -- In seconds, at the end of this time, the tunnel will close for other people to climb into.
     model = {modelType = "prop", hash = `prop_rock_1_i`, offset = vector3(0.0, 0.0, -0.2)},
     required = {
         {type = "item", name = "shovel", amount = 1},
     }, 
     process = function(data)
         local ped = PlayerPedId()
+        
+        -- Check stamina before starting (stamina attribute is 1)
+        local stamina = GetAttributeCoreValue(ped, 1) -- 1 = stamina attribute
+        if stamina < 20.0 then
+            ShowNotification("You're too exhausted to dig. Rest and try again.")
+            return false
+        end
+        
         FreezeEntityPosition(ped, true)
         SetEntityCoords(ped, data.coords.x, data.coords.y, data.coords.z - 1.0)
         SetEntityHeading(ped, data.heading)
@@ -341,14 +349,43 @@ Config.Breakout = {
         local prop = CreateProp(`prop_tool_shovel`, data.coords.x, data.coords.y, data.coords.z + 1.0, true, true, false)
         local off, rot = vector3(0.0, 0.0, 0.0), vector3(0.0, 0.0, 0.0)
         AttachEntityToEntity(prop, ped, GetPedBoneIndex(ped, 28422), off.x, off.y, off.z, rot.x, rot.y, rot.z, false, false, false, true, 2, true)
+        
         local result
-        for i=1, 3 do 
-            result = lib.skillCheck({'easy', 'medium', 'easy'}, {'e'})
+        -- Progressive difficulty skill checks: easy → medium → hard → very hard
+        local skillChecks = {
+            'easy', 'easy', 'medium', 'medium', 'hard', 'hard',
+            {areaSize = 50, speedMultiplier = 1.5},
+            {areaSize = 40, speedMultiplier = 2},
+            {areaSize = 30, speedMultiplier = 2.5},
+            {areaSize = 25, speedMultiplier = 3}
+        }
+        
+        for i=1, 10 do 
+            -- Drain stamina during digging (stamina attribute is 1)
+            local currentStamina = GetAttributeCoreValue(ped, 1) -- 1 = stamina attribute
+            local newStamina = math.max(0, currentStamina - 5.0)
+            SetAttributeCoreValue(ped, 1, newStamina) -- Drain stamina
+            
+            -- Check if stamina is too low
+            if GetAttributeCoreValue(ped, 1) < 10.0 then
+                result = false
+                ShowNotification("You're too exhausted to continue digging.")
+                break
+            end
+            
+            result = lib.skillCheck({skillChecks[i]}, {'e'})
             if not result then
                 break
             end
-            Wait(1000)
+            
+            -- Longer wait times: 4 seconds for most, 6 seconds after hard checks
+            if i >= 5 then
+                Wait(6000) -- 6 seconds after hard checks
+            else
+                Wait(4000) -- 4 seconds for easier checks
+            end
         end
+        
         FreezeEntityPosition(ped, false)
         ClearPedTasks(ped)
         DeleteEntity(prop)
@@ -596,7 +633,7 @@ Config.Prisons = {
                 coords = vector3(1627.9252, 2539.87, 45.7227),
                 heading = 277.6246,
                 model = {modelType = "prop", hash = `prop_cons_plank`},
-                regenTime = 5, -- Time after redemption it can be redeemed again.
+                regenTime = 120, -- Time after redemption it can be redeemed again.
                 rewards = { -- Rewards for redeeming the lootable.
                     {type = "item", name = "wood", amount = 1},
                 },
@@ -606,7 +643,7 @@ Config.Prisons = {
                 coords = vector3(1776.5386, 2563.7231, 45.57),
                 heading = 1.5599,
                 model = {modelType = "prop", hash = `prop_ladel`, offset = vector3(0.0, 0.0, 1.0)},
-                regenTime = 5, -- Time after redemption it can be redeemed again.
+                regenTime = 120, -- Time after redemption it can be redeemed again.
                 rewards = { -- Rewards for redeeming the lootable.
                     {type = "item", name = "metal", amount = 1},
                 },
@@ -616,7 +653,7 @@ Config.Prisons = {
                 coords = vector3(1689.0037, 2548.8884, 45.5604),
                 heading = 35.3041,
                 model = {modelType = "prop", hash = `prop_rope_family_3`},
-                regenTime = 5, -- Time after redemption it can be redeemed again.
+                regenTime = 120, -- Time after redemption it can be redeemed again.
                 rewards = { -- Rewards for redeeming the lootable.
                     {type = "item", name = "rope", amount = 1},
                 },

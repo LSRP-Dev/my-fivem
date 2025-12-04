@@ -35,7 +35,8 @@ function ResetBreakout(index)
     PrisonInteractions[index].breakout = CreateInteraction({
         label = _L("interact_breakout"),
         coords = prison.breakout.start.coords,
-        heading = prison.breakout.start.heading
+        heading = prison.breakout.start.heading,
+        renderDistance = 5.0 -- Harder to find - requires exploration
     }, function(selected)
         ServerCallback("pickle_prisons:canBreakout", function(result) 
             if not result then return end

@@ -178,6 +178,7 @@ function CreateInteraction(data, selected)
         coords = data.coords,
         radius = data.radius or 1.0,
         heading = data.heading,
+        renderDistance = data.renderDistance, -- Custom render distance for specific interactions
     }
     if Config.UseTarget then
         Interactions[index].zone = AddTargetZone(Interactions[index].coords, Interactions[index].radius, Interactions[index].options)
@@ -220,7 +221,8 @@ Citizen.CreateThread(function()
         for k,v in pairs(Interactions) do 
             local coords = v.coords
             local dist = #(pcoords-coords)
-            if (dist < Config.RenderDistance) then 
+            local renderDistance = v.renderDistance or Config.RenderDistance
+            if (dist < renderDistance) then 
                 EnsureInteractionModel(k)
                 if not Config.UseTarget then
                     if not v.model and Config.Marker and Config.Marker.enabled then

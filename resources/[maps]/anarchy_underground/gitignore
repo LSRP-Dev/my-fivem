@@ -1,0 +1,100 @@
+# ==========================
+# 🧠 CORE GITIGNORE FOR FIVEM/QBOX SERVERS
+# ==========================
+
+# Ignore system & local dev folders
+.vscode/
+.idea/
+.vs/
+*.log
+*.tmp
+*.bak
+*.old
+*.DS_Store
+
+# Ignore Node & JS build files
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignore temp and cache directories
+cache/
+logs/
+log/
+temp/
+tmp/
+crashdumps/
+mods/
+data/
+saves/
+screenshots/
+
+# Ignore server-related runtime folders
+run/
+caches.xml
+dump/
+profile.db
+txData/
+*.pid
+*.pid.lock
+*.lock
+
+# Ignore compiled or backup files
+*.dll
+*.exe
+*.so
+*.dylib
+*.db
+*.sql
+*.sqlite
+*.sqlite3
+*.cfg.bak
+*.yml.bak
+*.json.bak
+*.xml.bak
+
+# Ignore ZAP Hosting / FiveM generated configs
+server.cfg
+server.log
+screenlog.0
+*.RPT
+*.mdmp
+*.stacktrace
+
+# Ignore any sensitive credentials (add them as GitHub secrets instead)
+*.env
+.env.*
+config.json
+config.lua
+config.yml
+secret.json
+keys.json
+api_keys.lua
+
+# Ignore custom local resources not meant for GitHub
+resources/[local-test]/
+resources/[private]/
+resources/[temp]/
+resources/[unreleased]/
+resources/[dev]/
+
+# Ignore FTP deploy metadata
+ftp-deploy-sync-state.json
+
+# Ignore Windows & macOS metadata
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+Icon?
+.AppleDouble
+.LSOverride
+
+# ==========================
+# ✅ SAFE FILES TO KEEP TRACKED
+# ==========================
+!resources/**/fxmanifest.lua
+!resources/**/config.lua.example
+!resources/**/README.md
+!.github/

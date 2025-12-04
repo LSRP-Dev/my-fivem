@@ -51,6 +51,7 @@ shared_scripts {
 }
 
 server_scripts {
+    '@ox_lib/init.lua',
     '@oxmysql/lib/MySQL.lua',
     'server/main.lua',
     'server/adminactions.lua',

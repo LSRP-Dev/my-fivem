@@ -994,21 +994,44 @@ RegisterServerEvent("919-admin:server:AddVehicleToGarage", function(targetId)
             return
         end
         
-        -- Check if lib global is available
-        if type(lib) ~= 'table' then
-            TriggerClientEvent("919-admin:client:ShowPanelAlert", src, "danger", "<strong>Error</strong> ox_lib is not properly initialized. Please restart the server or contact an administrator.")
-            print("^1[919ADMIN] ERROR: lib global is not available. Make sure '@ox_lib/init.lua' is in shared_scripts and ox_lib is started.^0")
-            return
+        -- Try to get lib - first check global, then try exports as fallback
+        local libInstance = lib
+        if not libInstance or type(libInstance) ~= 'table' then
+            -- Try accessing through exports as fallback
+            local success, result = pcall(function()
+                return exports.ox_lib
+            end)
+            if success and result then
+                print("^3[919ADMIN] WARNING: lib global not available, using exports.ox_lib as fallback^0")
+                -- Try to construct lib from exports
+                if type(result.callback) == 'table' and type(result.callback.await) == 'function' then
+                    libInstance = result
+                else
+                    TriggerClientEvent("919-admin:client:ShowPanelAlert", src, "danger", "<strong>Error</strong> ox_lib callback system is not available through exports.")
+                    print("^1[919ADMIN] ERROR: ox_lib callback not available through exports. Please restart the server.^0")
+                    return
+                end
+            else
+                TriggerClientEvent("919-admin:client:ShowPanelAlert", src, "danger", "<strong>Error</strong> ox_lib is not properly initialized. Please restart the server or contact an administrator.")
+                print("^1[919ADMIN] ERROR: lib global is not available. Make sure '@ox_lib/init.lua' is in shared_scripts and server_scripts, and ox_lib is started.^0")
+                print("^1[919ADMIN] DEBUG: lib type: " .. type(lib) .. ", exports.ox_lib available: " .. tostring(success) .. "^0")
+                return
+            end
         end
         
-        if type(lib.callback) ~= 'table' or type(lib.callback.await) ~= 'function' then
+        -- Check if callback system is available
+        if type(libInstance.callback) ~= 'table' or type(libInstance.callback.await) ~= 'function' then
+            -- Try to explicitly load the callback module
+            if libInstance.callback then
+                print("^3[919ADMIN] DEBUG: lib.callback exists but await is not a function. Type: " .. type(libInstance.callback.await) .. "^0")
+            end
             TriggerClientEvent("919-admin:client:ShowPanelAlert", src, "danger", "<strong>Error</strong> ox_lib callback system is not available. Please restart the server or contact an administrator.")
-            print("^1[919ADMIN] ERROR: lib.callback is not available. ox_lib may not be fully loaded.^0")
+            print("^1[919ADMIN] ERROR: lib.callback.await is not available. ox_lib may not be fully loaded.^0")
             return
         end
         
         -- Get vehicle info from admin (who is in the vehicle)
-        local vehicleInfo = lib.callback.await('919-admin:server:GetVehicleInfoFromAdmin', src)
+        local vehicleInfo = libInstance.callback.await('919-admin:server:GetVehicleInfoFromAdmin', src)
         if not vehicleInfo then
             TriggerClientEvent("919-admin:client:ShowPanelAlert", src, "danger", "<strong>Error</strong> You must be in a vehicle to use this feature.")
             return

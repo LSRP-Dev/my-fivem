@@ -253,6 +253,52 @@ Config.DealershipLocations = {
     societyPurchaseJobWhitelist = {},
     societyPurchaseGangWhitelist = {},
   },
+  ["motorcycles"] = {
+    type = "self-service", -- Self-service dealership for motorcycles
+    openShowroom = {
+      coords = vector3(-60.39, 67.59, 71.92), -- Main showroom entry point
+      size = 5
+    },
+    openManagement = {
+      coords = vector3(-52.99, 75.41, 71.90), -- Management location
+      size = 5
+    },
+    sellVehicle = {
+      coords = vector3(-52.99, 75.41, 71.90), -- Same as management for self-service
+      size = 5
+    },
+    purchaseSpawn = vector4(-95.35, 82.34, 71.55, 0.0), -- Purchase spawn (heading will need adjustment)
+    testDriveSpawn = vector4(-93.68, 68.27, 71.39, 0.0), -- Test drive spawn (heading will need adjustment)
+    camera = {
+      name = "Bike",
+      coords = vector4(-68.89, 63.67, 76.0, 180.0), -- Camera position above blip location
+      positions = {5.0, 8.0, 12.0, 8.0}
+    },
+    categories = {"motorcycles", "cycles"}, -- Only motorcycles and cycles
+    enableSellVehicle = true, -- Allow players to sell bikes back to dealer
+    sellVehiclePercent = 0.6,  -- 60% of current sale price
+    enableTestDrive = true, -- Enable test drives
+    enableFinance = true, -- Enable financing
+    hideBlip = false,
+    blip = {
+      id = 348, -- Motorcycle icon
+      color = 5, -- Yellow
+      scale = 0.6
+    },
+    hideMarkers = false,
+    markers = { id = 21, size = { x = 0.3, y = 0.3, z = 0.3 }, color = { r = 255, g = 255, b = 255, a = 120 }, bobUpAndDown = 0, faceCamera = 0, rotate = 1, drawOnEnts = 0 },
+    showroomJobWhitelist = {},
+    showroomGangWhitelist = {},
+    societyPurchaseJobWhitelist = {},
+    societyPurchaseGangWhitelist = {},
+    -- Note: Display bikes can be added through the management system at these coordinates:
+    -- vector3(-67.40, 72.52, 71.81)
+    -- vector3(-58.69, 65.14, 72.02)
+    -- vector3(-74.91, 74.77, 71.71)
+    -- Additional showroom entry points (if needed for future updates):
+    -- vector3(-65.26, 69.25, 71.80)
+    -- vector3(-74.72, 71.79, 71.67)
+  },
 }
 
 -- Commands

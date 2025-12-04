@@ -24,8 +24,24 @@ RegisterNetEvent("jg-mechanic:server:buy-item", function(shopIndex, itemIndex, q
   local totalCost = item.price * qty
 
   if Config.UseSocietyFund then
-    local success = removeFromSocietyFund(src, mechanicId, totalCost)
-    if not success then return end
+    -- Get society name from mechanic config (job property)
+    local societyName = convertedMechanicId
+    local societyType = "job" -- Default to job, can be overridden if mechanic config has societyType
+    
+    if not societyName then
+      Framework.Server.Notify(src, Locale.shopNameError, "error")
+      return
+    end
+
+    -- Check society balance before attempting purchase
+    local societyBalance = Framework.Server.GetSocietyBalance(societyName, societyType)
+    if not societyBalance or societyBalance < totalCost then
+      Framework.Server.Notify(src, Locale.notEnoughMoneyInMechanicAccount, "error")
+      return
+    end
+
+    -- Remove money from society fund
+    Framework.Server.RemoveFromSocietyFund(societyName, societyType, totalCost)
   else
     local playerBalance = Framework.Server.GetPlayerBalance(src, Config.PlayerBalance or "bank")
     if playerBalance < totalCost then

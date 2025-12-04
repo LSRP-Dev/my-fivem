@@ -381,4 +381,25 @@ return {
             },
         },
     },
+    ['fishnchips'] = {
+        label = 'Fish & Chips',
+        defaultDuty = true,
+        offDutyPay = false,
+        grades = {
+            [0] = {
+                name = 'Employee',
+                payment = 50
+            },
+            [1] = {
+                name = 'Cook',
+                payment = 75
+            },
+            [2] = {
+                name = 'Manager',
+                isboss = true,
+                bankAuth = true,
+                payment = 100
+            },
+        },
+    },
 }

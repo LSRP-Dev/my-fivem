@@ -6303,4 +6303,173 @@ return {
         close = true,
         client = { image = 'ecola.png' }
     },
+    -- Fish & Chips Restaurant Items
+    ['fish_fillet'] = {
+        label = 'Fish Fillet',
+        weight = 200,
+        stack = true,
+        close = true,
+        description = 'A fresh fish fillet ready for cooking.',
+        client = { image = 'fish_fillet.png' }
+    },
+    ['raw_chips'] = {
+        label = 'Raw Chips',
+        weight = 300,
+        stack = true,
+        close = true,
+        description = 'Raw potato chips ready to be fried.',
+        client = { image = 'raw_chips.png' }
+    },
+    ['batter_mix'] = {
+        label = 'Batter Mix',
+        weight = 250,
+        stack = true,
+        close = true,
+        description = 'Batter mix for coating fish before frying.',
+        client = { image = 'batter_mix.png' }
+    },
+    ['fishchips'] = {
+        label = 'Fish & Chips',
+        weight = 500,
+        stack = true,
+        close = true,
+        description = 'A delicious serving of fish and chips.',
+        client = { image = 'fishchips.png' }
+    },
+    ['cs_chips'] = {
+        label = 'Chips',
+        weight = 300,
+        stack = true,
+        close = true,
+        description = 'Crispy fried chips.',
+        client = { image = 'cs_chips.png' }
+    },
+    ['cs_battered_cod'] = {
+        label = 'Battered Cod',
+        weight = 350,
+        stack = true,
+        close = true,
+        description = 'Golden battered cod fillet.',
+        client = { image = 'cs_battered_cod.png' }
+    },
+    ['cs_fish_meal'] = {
+        label = 'Fish & Chips Meal',
+        weight = 550,
+        stack = true,
+        close = true,
+        description = 'A complete fish and chips meal with a drink.',
+        client = { image = 'cs_fish_meal.png' }
+    },
+    ['cs_battered_sausage'] = {
+        label = 'Battered Sausage',
+        weight = 250,
+        stack = true,
+        close = true,
+        description = 'A traditional battered sausage.',
+        client = { image = 'cs_battered_sausage.png' }
+    },
+    ['cs_pie'] = {
+        label = 'Meat Pie',
+        weight = 300,
+        stack = true,
+        close = true,
+        description = 'A delicious meat pie.',
+        client = { image = 'cs_pie.png' }
+    },
+    ['cs_sausage_meal'] = {
+        label = 'Sausage Meal',
+        weight = 450,
+        stack = true,
+        close = true,
+        description = 'Battered sausage meal with chips and drink.',
+        client = { image = 'cs_sausage_meal.png' }
+    },
+    ['cs_savaloy'] = {
+        label = 'Savaloy',
+        weight = 250,
+        stack = true,
+        close = true,
+        description = 'A traditional savaloy sausage.',
+        client = { image = 'cs_savaloy.png' }
+    },
+    ['cs_savaloy_meal'] = {
+        label = 'Savaloy Meal',
+        weight = 450,
+        stack = true,
+        close = true,
+        description = 'Savaloy meal with chips and drink.',
+        client = { image = 'cs_savaloy_meal.png' }
+    },
+    ['cs_pie_meal'] = {
+        label = 'Pie Meal',
+        weight = 500,
+        stack = true,
+        close = true,
+        description = 'Meat pie meal with chips and drink.',
+        client = { image = 'cs_pie_meal.png' }
+    },
+    ['seafood_batter_fish'] = {
+        label = 'Battered Fish',
+        weight = 350,
+        stack = true,
+        close = true,
+        description = 'Crispy battered fish fillet.',
+        client = { image = 'seafood_batter_fish.png' }
+    },
+    ['cooked_fish'] = {
+        label = 'Cooked Fish',
+        weight = 300,
+        stack = true,
+        close = true,
+        description = 'A freshly cooked fish fillet.',
+        client = { image = 'cooked_fish.png' }
+    },
+    ['grilled_fish'] = {
+        label = 'Grilled Fish',
+        weight = 300,
+        stack = true,
+        close = true,
+        description = 'A perfectly grilled fish fillet.',
+        client = { image = 'grilled_fish.png' }
+    },
+    ['cs_paper'] = {
+        label = 'Wrapping Paper',
+        weight = 50,
+        stack = true,
+        close = true,
+        description = 'Paper for wrapping fish and chips.',
+        client = { image = 'cs_paper.png' }
+    },
+    ['cs_battermix'] = {
+        label = 'Chippy Batter Mix',
+        weight = 250,
+        stack = true,
+        close = true,
+        description = 'Professional batter mix for chippy shop.',
+        client = { image = 'cs_battermix.png' }
+    },
+    ['salt'] = {
+        label = 'Salt',
+        weight = 100,
+        stack = true,
+        close = true,
+        description = 'Salt shaker for seasoning.',
+        client = { image = 'salt.png' }
+    },
+    ['vinegar'] = {
+        label = 'Vinegar',
+        weight = 200,
+        stack = true,
+        close = true,
+        description = 'Bottle of vinegar for chips.',
+        client = { image = 'vinegar.png' }
+    },
+    ['lemon'] = {
+        label = 'Lemon',
+        weight = 100,
+        stack = true,
+        close = true,
+        description = 'Fresh lemon for serving with fish.',
+        client = { image = 'lemon.png' }
+    },
 }

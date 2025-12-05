@@ -5,8 +5,27 @@ function CreateVeh(modelHash, ...)
     SetModelAsNoLongerNeeded(modelHash)
     
     -- Wait for vehicle to exist and be fully loaded
-    while not DoesEntityExist(veh) do
+    local timeout = 0
+    while not DoesEntityExist(veh) and timeout < 50 do
         Wait(100)
+        timeout = timeout + 1
+    end
+    
+    if not DoesEntityExist(veh) then
+        return 0
+    end
+    
+    -- Wait a bit for vehicle to fully initialize
+    Wait(100)
+    
+    -- Request network control to ensure proper ownership
+    if not NetworkHasControlOfEntity(veh) then
+        NetworkRequestControlOfEntity(veh)
+        timeout = 0
+        while not NetworkHasControlOfEntity(veh) and timeout < 50 do
+            Wait(10)
+            timeout = timeout + 1
+        end
     end
     
     -- Get network ID and ensure proper network registration
@@ -14,13 +33,15 @@ function CreateVeh(modelHash, ...)
     if netId and netId > 0 then
         -- Allow network migration to prevent desync issues
         SetNetworkIdCanMigrate(netId, true)
-        -- Wait for network ID to be properly registered
-        while not NetworkDoesEntityExistWithNetworkId(netId) do
+        -- Wait for network ID to be properly registered (with timeout)
+        timeout = 0
+        while not NetworkDoesEntityExistWithNetworkId(netId) and timeout < 100 do
             Wait(10)
+            timeout = timeout + 1
         end
     end
     
-    -- Set vehicle ownership and properties
+    -- Set vehicle ownership and properties BEFORE mission entity
     SetVehicleHasBeenOwnedByPlayer(veh, true)
     SetVehicleNeedsToBeHotwired(veh, false)
     SetVehRadioStation(veh, 'OFF')
@@ -28,8 +49,21 @@ function CreateVeh(modelHash, ...)
     -- Set as mission entity to prevent automatic cleanup
     SetEntityAsMissionEntity(veh, true, true)
     
+    -- Wait a moment after setting mission entity to ensure it's registered
+    Wait(50)
+    
+    -- Verify entity still exists and is a mission entity
+    if not DoesEntityExist(veh) or not IsEntityAMissionEntity(veh) then
+        -- Retry setting as mission entity
+        SetEntityAsMissionEntity(veh, true, true)
+        Wait(50)
+    end
+    
     -- Ensure vehicle is properly positioned (especially important for planes)
     SetVehicleOnGroundProperly(veh)
+    
+    -- Additional wait for aircraft to fully stabilize
+    Wait(100)
     
     if (GiveKeys) then 
         GiveKeys(veh)

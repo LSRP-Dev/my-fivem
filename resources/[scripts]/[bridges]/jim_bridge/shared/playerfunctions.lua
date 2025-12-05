@@ -355,6 +355,19 @@ function fundPlayer(fund, moneyType, newsrc)
         return
     end
 
+    -- Check hourly earnings cap (only for cash/money, not bank transfers)
+    if moneyType == "cash" or moneyType == "money" then
+        local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(src, fund, 'jim-bridge-sale')
+        if not success then
+            debugPrint("^3Bridge^7: ^1Player ^3"..src.." ^1hit hourly earnings limit^7", fund)
+            return false
+        end
+        fund = cappedAmount
+        if fund <= 0 then
+            return false
+        end
+    end
+
     for i = 1, #moneyFunc do
         local framework = moneyFunc[i]
         if framework.framework == OXInv and moneyType == "bank" then goto skip end

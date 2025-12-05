@@ -90,36 +90,59 @@ function AddPlayerMoney(Player, account, TotalBill)
     
     local source = Player.PlayerData.source
     
+    -- Check hourly earnings cap
+    local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(source, TotalBill, 'atm-robbery')
+    if not success then
+        if isQBox then
+            exports.qbx_core:Notify(source, message or 'You have reached your hourly earnings limit', 'error')
+        else
+            QBCore.Functions.Notify(source, message or 'You have reached your hourly earnings limit', 'error')
+        end
+        return
+    end
+    
+    if cappedAmount <= 0 then
+        return
+    end
+    
     if account == 'bank' then
         if isQBox then
-            exports.qbx_core:AddMoney(source, 'bank', TotalBill)
+            exports.qbx_core:AddMoney(source, 'bank', cappedAmount)
         else
-            Player.Functions.AddMoney('bank', TotalBill)
+            Player.Functions.AddMoney('bank', cappedAmount)
         end
     elseif account == 'cash' then
         if isQBox then
-            exports.qbx_core:AddMoney(source, 'cash', TotalBill)
+            exports.qbx_core:AddMoney(source, 'cash', cappedAmount)
         else
-            Player.Functions.AddMoney('cash', TotalBill)
+            Player.Functions.AddMoney('cash', cappedAmount)
         end
     elseif account == 'dirty' then
         -- Use black_money item for dirty money (criminal activity)
         if GetResourceState("ox_inventory") == "started" then
-            exports.ox_inventory:AddItem(source, 'black_money', TotalBill)
+            exports.ox_inventory:AddItem(source, 'black_money', cappedAmount)
         elseif lib.checkDependency('qb-inventory', '2.0.0') then
-            exports['qb-inventory']:AddItem(source, 'black_money', TotalBill)
+            exports['qb-inventory']:AddItem(source, 'black_money', cappedAmount)
             if QBCore.Shared and QBCore.Shared.Items and QBCore.Shared.Items['black_money'] then
                 TriggerClientEvent('qb-inventory:client:ItemBox', source, QBCore.Shared.Items['black_money'], "add")
             end
         else
             if isQBox then
-                exports.qbx_core:AddItem(source, 'black_money', TotalBill)
+                exports.qbx_core:AddItem(source, 'black_money', cappedAmount)
             else
-                Player.Functions.AddItem('black_money', TotalBill)
+                Player.Functions.AddItem('black_money', cappedAmount)
                 if QBCore.Shared and QBCore.Shared.Items and QBCore.Shared.Items['black_money'] then
                     TriggerClientEvent('inventory:client:ItemBox', source, QBCore.Shared.Items['black_money'], "add")
                 end
             end
+        end
+    end
+    
+    if message then
+        if isQBox then
+            exports.qbx_core:Notify(source, message, 'inform')
+        else
+            QBCore.Functions.Notify(source, message, 'inform')
         end
     end
 end

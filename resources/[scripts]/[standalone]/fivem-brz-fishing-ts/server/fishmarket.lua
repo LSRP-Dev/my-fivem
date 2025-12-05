@@ -148,13 +148,35 @@ RegisterNetEvent('brz-fishing:sellFish', function(itemName, count)
     if exports.ox_inventory:RemoveItem(src, itemName, count) then
         local Player = exports.qbx_core:GetPlayer(src)
         if Player then
-            Player.Functions.AddMoney('cash', totalPrice)
-            local title = atIllegalSeller and 'Illegal Fish Buyer' or 'Fish Market'
-            lib.notify(src, {
-                title = title,
-                description = string.format('Sold %dx %s for $%s', count, exports.ox_inventory:Items()[itemName].label, totalPrice),
-                type = 'success'
-            })
+            -- Check hourly earnings cap
+            local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(src, totalPrice, 'fishing')
+            if not success then
+                lib.notify(src, {
+                    title = atIllegalSeller and 'Illegal Fish Buyer' or 'Fish Market',
+                    description = message or 'You have reached your hourly earnings limit',
+                    type = 'error'
+                })
+                -- Return the items since we can't pay
+                exports.ox_inventory:AddItem(src, itemName, count)
+                return
+            end
+            
+            if cappedAmount > 0 then
+                Player.Functions.AddMoney('cash', cappedAmount)
+                local title = atIllegalSeller and 'Illegal Fish Buyer' or 'Fish Market'
+                lib.notify(src, {
+                    title = title,
+                    description = string.format('Sold %dx %s for $%s', count, exports.ox_inventory:Items()[itemName].label, cappedAmount),
+                    type = 'success'
+                })
+                if message then
+                    lib.notify(src, {
+                        title = title,
+                        description = message,
+                        type = 'inform'
+                    })
+                end
+            end
         end
     else
         lib.notify(src, {

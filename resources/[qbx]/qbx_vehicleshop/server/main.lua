@@ -8,6 +8,7 @@ local financeStorage = require 'server.storage'
 COREVEHICLES = exports.qbx_core:GetVehiclesByName()
 local saleTimeout = {}
 local testDrives = {}
+local lastSaleTime = {} -- Track last sale time per player for cooldown
 
 ---@param data {toVehicle: string}
 RegisterNetEvent('qbx_vehicleshop:server:swapVehicle', function(data)
@@ -163,10 +164,35 @@ function SellShowroomVehicleTransact(src, target, price, downPayment)
         return false
     end
 
-    local commission = lib.math.round(price * config.commissionRate)
-    config.addPlayerFunds(player, 'bank', commission, 'vehicle-commission')
-    exports.qbx_core:Notify(src, locale('success.earned_commission', lib.math.groupdigits(commission)), 'success')
+    -- Check cooldown between sales
+    if lastSaleTime[src] and (os.time() - lastSaleTime[src]) < config.minTimeBetweenSales then
+        exports.qbx_core:Notify(src, 'You must wait before making another sale', 'error')
+        return false
+    end
 
+    -- Calculate commission with cap
+    local commission = lib.math.round(price * config.commissionRate)
+    if commission > config.maxCommissionPerSale then
+        commission = config.maxCommissionPerSale
+    end
+
+    -- Check hourly earnings cap
+    local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(src, commission, 'vehicle-sale-commission')
+    if not success then
+        exports.qbx_core:Notify(src, message or 'You have reached your hourly earnings limit', 'error')
+        return false
+    end
+
+    -- Pay the capped commission
+    if cappedAmount > 0 then
+        config.addPlayerFunds(player, 'bank', cappedAmount, 'vehicle-commission')
+        exports.qbx_core:Notify(src, locale('success.earned_commission', lib.math.groupdigits(cappedAmount)), 'success')
+        if message then
+            exports.qbx_core:Notify(src, message, 'inform')
+        end
+    end
+
+    lastSaleTime[src] = os.time()
     config.addSocietyFunds(player.PlayerData.job.name, price)
     exports.qbx_core:Notify(target.PlayerData.source, locale('success.purchased'), 'success')
 

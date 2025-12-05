@@ -85,7 +85,7 @@ local function handleMoney(job, price, employeeList)
     local netRevenue      = math.floor(price - commissionTotal)
 
     for _, empSrc in pairs(onlineEmployees) do
-        AddMoney(empSrc, commissionPer)
+        AddMoney(empSrc, commissionPer, 'catering-commission')
     end
 
     Log('Catering Order Commission paid: ' .. job, 'catering')

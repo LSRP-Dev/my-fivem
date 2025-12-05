@@ -91,6 +91,10 @@ Config.SmoothFirstGear = false
 -- have been detected for too long
 Config.ManualHighRPMNotifications = true
 
+-- Economy Cap Settings
+Config.MaxHourlyEarnings = 10000 -- Maximum earnings per hour for employees
+Config.ServiceCooldown = 300 -- 5 minutes between services (seconds)
+
 -- Misc
 Config.UniqueBlips = true
 Config.ModsPricesAsPercentageOfVehicleValue = true -- Enable pricing tuning items as % of vehicle value - it tries jg-dealerships, then QBShared, then the vehicles meta file automagically for pricing data

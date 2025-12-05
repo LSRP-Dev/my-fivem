@@ -1,3 +1,6 @@
+-- Track last sale time per player for cooldown
+local lastSaleTime = {}
+
 ---@param dealershipId string
 ---@param coords vector4
 ---@param purchaseType "personal"|"society"
@@ -127,6 +130,38 @@ local function purchaseVehicle(src, dealershipId, coords, purchaseType, society,
     MySQL.update.await("UPDATE dealership_stock SET stock = stock - 1 WHERE vehicle = ? AND dealership = ?", {model, dealershipId})
     MySQL.update.await("UPDATE dealership_data SET balance = balance + ? WHERE name = ?", {amountToPay, dealershipId})
     UpdateDealershipShowroomCache(dealershipId)
+  end
+  
+  -- Pay commission to seller if direct sale
+  if sellerPlayer and pendingSale and pendingSale.dealerPlayerId then
+    local sellerSrc = pendingSale.dealerPlayerId
+    
+    -- Check cooldown
+    if lastSaleTime[sellerSrc] and (os.time() - lastSaleTime[sellerSrc]) < Config.MinTimeBetweenSales then
+      Framework.Server.Notify(sellerSrc, "You must wait before making another sale", "error")
+    else
+      local dealershipData = MySQL.single.await("SELECT employee_commission FROM dealership_data WHERE name = ?", {dealershipId})
+      local commissionRate = (dealershipData and dealershipData.employee_commission or 10) / 100
+      
+      -- Calculate commission with cap
+      local commission = math.floor(amountToPay * commissionRate)
+      if commission > Config.MaxCommissionPerSale then
+        commission = Config.MaxCommissionPerSale
+      end
+      
+      -- Check hourly earnings cap
+      local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(sellerSrc, commission, 'dealership-commission')
+      if success and cappedAmount > 0 then
+        Framework.Server.PlayerAddMoney(sellerSrc, cappedAmount, "bank")
+        Framework.Server.Notify(sellerSrc, string.format("Commission earned: $%s", lib.math.groupdigits(cappedAmount)), "success")
+        if message then
+          Framework.Server.Notify(sellerSrc, message, "inform")
+        end
+        lastSaleTime[sellerSrc] = os.time()
+      elseif not success then
+        Framework.Server.Notify(sellerSrc, message or "You have reached your hourly earnings limit", "error")
+      end
+    end
   end
   
   MySQL.insert.await("INSERT INTO dealership_sales (dealership, vehicle, plate, player, seller, purchase_type, paid, owed) VALUES(?, ?, ?, ?, ?, ?, ?, ?)", {dealershipId, model, plate, player, sellerPlayer, paymentType, paid, owed})

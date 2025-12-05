@@ -1,3 +1,8 @@
+-- Economy Cap Settings
+Config.MaxHourlyEarnings = 10000 -- Maximum earnings per hour per player
+Config.MaxCommissionPerSale = 2000 -- Maximum commission per vehicle sale
+Config.MinTimeBetweenSales = 360 -- 6 minutes between sales (seconds)
+
 -- 
 -- Events
 -- 

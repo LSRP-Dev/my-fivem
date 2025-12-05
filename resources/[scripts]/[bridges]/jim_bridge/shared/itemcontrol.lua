@@ -2794,9 +2794,23 @@ RegisterNetEvent(getScript()..":Sellitems", function(data, token)
 
     local hasItems, hasTable = hasItem(data.item, 1, src)
     if hasItems then
-        removeItem(data.item, hasTable[data.item].count, src)
-        print((hasTable[data.item].count * data.price), data.price)
-        fundPlayer((hasTable[data.item].count * data.price), "cash", src)
+        local totalPrice = hasTable[data.item].count * data.price
+        
+        -- Check hourly earnings cap
+        local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(src, totalPrice, 'item-sale')
+        if not success then
+            triggerNotify(nil, message or 'You have reached your hourly earnings limit', "error", src)
+            return
+        end
+        
+        if cappedAmount > 0 then
+            removeItem(data.item, hasTable[data.item].count, src)
+            print((hasTable[data.item].count * data.price), data.price)
+            fundPlayer(cappedAmount, "cash", src)
+            if message then
+                triggerNotify(nil, message, "inform", src)
+            end
+        end
     else
         triggerNotify(nil, Loc[Config.Lan].error["dont_have"].." "..getItemLabel(data.item), "error", src)
     end

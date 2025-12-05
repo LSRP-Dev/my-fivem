@@ -199,9 +199,27 @@ RegisterNetEvent('lation_247robbery:CompleteRegisterRobbery', function()
             else
                 -- black_money is always an item, not an account
                 if add.item == 'black_money' or add.item == 'dirty' then
-                    AddItem(source, 'black_money', quantity)
+                    -- Check hourly earnings cap for black_money
+                    local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(source, quantity, 'store-robbery-safe')
+                    if success and cappedAmount > 0 then
+                        AddItem(source, 'black_money', cappedAmount)
+                        if message then
+                            TriggerClientEvent('lation_247robbery:Notify', source, message, 'inform')
+                        end
+                    elseif not success then
+                        TriggerClientEvent('lation_247robbery:Notify', source, message or 'You have reached your hourly earnings limit', 'error')
+                    end
                 elseif add.item == 'cash' or add.item == 'money' or add.item == 'bank' then
-                    AddMoney(source, add.item, quantity)
+                    -- Check hourly earnings cap for money
+                    local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(source, quantity, 'store-robbery-safe')
+                    if success and cappedAmount > 0 then
+                        AddMoney(source, add.item, cappedAmount)
+                        if message then
+                            TriggerClientEvent('lation_247robbery:Notify', source, message, 'inform')
+                        end
+                    elseif not success then
+                        TriggerClientEvent('lation_247robbery:Notify', source, message or 'You have reached your hourly earnings limit', 'error')
+                    end
                 else
                     AddItem(source, add.item, quantity)
                 end
@@ -266,9 +284,27 @@ RegisterNetEvent('lation_247robbery:CompleteSafeRobbery', function()
             else
                 -- black_money is always an item, not an account
                 if add.item == 'black_money' or add.item == 'dirty' then
-                    AddItem(source, 'black_money', quantity)
+                    -- Check hourly earnings cap for black_money
+                    local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(source, quantity, 'store-robbery-safe')
+                    if success and cappedAmount > 0 then
+                        AddItem(source, 'black_money', cappedAmount)
+                        if message then
+                            TriggerClientEvent('lation_247robbery:Notify', source, message, 'inform')
+                        end
+                    elseif not success then
+                        TriggerClientEvent('lation_247robbery:Notify', source, message or 'You have reached your hourly earnings limit', 'error')
+                    end
                 elseif add.item == 'cash' or add.item == 'money' or add.item == 'bank' then
-                    AddMoney(source, add.item, quantity)
+                    -- Check hourly earnings cap for money
+                    local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(source, quantity, 'store-robbery-safe')
+                    if success and cappedAmount > 0 then
+                        AddMoney(source, add.item, cappedAmount)
+                        if message then
+                            TriggerClientEvent('lation_247robbery:Notify', source, message, 'inform')
+                        end
+                    elseif not success then
+                        TriggerClientEvent('lation_247robbery:Notify', source, message or 'You have reached your hourly earnings limit', 'error')
+                    end
                 else
                     AddItem(source, add.item, quantity)
                 end

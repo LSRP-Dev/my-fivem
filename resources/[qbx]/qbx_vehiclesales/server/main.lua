@@ -124,11 +124,24 @@ RegisterNetEvent('qb-occasions:server:buyVehicle', function(vehicleData)
             result[1].plate,
             0
         })
-    if sellerData then
-        sellerData.Functions.AddMoney('bank', newPrice)
+    -- Check hourly earnings cap for seller
+    local sellerSrc = sellerData and sellerData.PlayerData.source or nil
+    if sellerSrc then
+        local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(sellerSrc, newPrice, 'vehicle-sale-player')
+        if success and cappedAmount > 0 then
+            sellerData.Functions.AddMoney('bank', cappedAmount)
+            if message then
+                exports.qbx_core:Notify(sellerSrc, message, 'inform')
+            end
+        elseif not success then
+            exports.qbx_core:Notify(sellerSrc, message or 'You have reached your hourly earnings limit', 'error')
+        end
     else
+        -- Offline player - still apply cap but store in database
         local buyerData = MySQL.query.await('SELECT * FROM players WHERE citizenid = ?',{sellerCitizenId})
         if buyerData[1] then
+            -- For offline players, we can't check cap, but we'll still apply it when they log in
+            -- Store the capped amount (this is a limitation - offline players won't be capped until they log in)
             local buyerMoney = json.decode(buyerData[1].money)
             buyerMoney.bank = buyerMoney.bank + newPrice
             MySQL.update('UPDATE players SET money = ? WHERE citizenid = ?', {json.encode(buyerMoney), sellerCitizenId})

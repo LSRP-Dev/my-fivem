@@ -8,13 +8,39 @@ function framework.addItems(data)
     local xPlayer = ESX.GetPlayerFromId(data.target)
     if type(data.items) == "table" then
         for _, item in pairs(data.items) do
-            if xPlayer.canCarryItem(item.item, item?.quantity or 1) then
-                xPlayer.addInventoryItem(item.item, (item?.quantity or 1))
+            if item.item == "money" then
+                -- Check hourly earnings cap for money rewards
+                local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(data.target, item.quantity, 'hunting-mission')
+                if success and cappedAmount > 0 then
+                    xPlayer.addMoney(cappedAmount)
+                    if message then
+                        TriggerClientEvent('esx:showNotification', data.target, message)
+                    end
+                elseif not success then
+                    TriggerClientEvent('esx:showNotification', data.target, message or 'You have reached your hourly earnings limit')
+                end
+            else
+                if xPlayer.canCarryItem(item.item, item?.quantity or 1) then
+                    xPlayer.addInventoryItem(item.item, (item?.quantity or 1))
+                end
             end
         end
     else
-        if xPlayer.canCarryItem(data.items, 1) then
-            xPlayer.addInventoryItem(data.items, 1)
+        if data.items == "money" then
+            -- Check hourly earnings cap for money rewards
+            local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(data.target, 1, 'hunting-mission')
+            if success and cappedAmount > 0 then
+                xPlayer.addMoney(cappedAmount)
+                if message then
+                    TriggerClientEvent('esx:showNotification', data.target, message)
+                end
+            elseif not success then
+                TriggerClientEvent('esx:showNotification', data.target, message or 'You have reached your hourly earnings limit')
+            end
+        else
+            if xPlayer.canCarryItem(data.items, 1) then
+                xPlayer.addInventoryItem(data.items, 1)
+            end
         end
     end
 end
@@ -26,7 +52,18 @@ end
 
 function framework.addMoney(data)
     local xPlayer = ESX.GetPlayerFromId(data.target)
-    xPlayer.addMoney(data.amount)
+    if xPlayer then
+        -- Check hourly earnings cap
+        local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(data.target, data.amount, 'hunting')
+        if success and cappedAmount > 0 then
+            xPlayer.addMoney(cappedAmount)
+            if message then
+                TriggerClientEvent('esx:showNotification', data.target, message)
+            end
+        elseif not success then
+            TriggerClientEvent('esx:showNotification', data.target, message or 'You have reached your hourly earnings limit')
+        end
+    end
 end
 
 function framework.removeMoney(data)

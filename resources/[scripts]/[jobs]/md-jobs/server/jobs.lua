@@ -233,7 +233,7 @@ local function dispenseCommission(source, amount, commissionRate)
     end
     local commissionAmt = math.floor(amount * commissionRate)
     local salaryAmt     = amount - commissionAmt
-    AddMoney(source, commissionAmt)
+    AddMoney(source, commissionAmt, 'job-commission')
     Notifys(source, Format(L.cater.commission, commissionAmt), 'success')
     AddJobMoney(GetJobName(source), salaryAmt)
 end

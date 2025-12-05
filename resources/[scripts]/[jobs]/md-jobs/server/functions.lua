@@ -344,7 +344,23 @@ end
 --- @param source number the player ID
 --- @param amount number the amount to add
 --- @return nil
-function AddMoney(source, amount)
+function AddMoney(source, amount, activityType)
+    -- Check hourly earnings cap
+    local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(source, amount, activityType or 'md-jobs')
+    if not success then
+        Notifys(source, message or 'You have reached your hourly earnings limit', 'error')
+        return false
+    end
+    
+    -- Use capped amount instead of original amount
+    amount = cappedAmount
+    if amount <= 0 then
+        return false
+    end
+    
+    if message then
+        Notifys(source, message, 'inform')
+    end
     if Config.Framework == 'qb' then
         local Player = GetPlayer(source)
         Player.Functions.AddMoney('cash', amount)

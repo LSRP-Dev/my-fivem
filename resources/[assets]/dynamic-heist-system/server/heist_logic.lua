@@ -283,7 +283,16 @@ local function giveRewards(source, loot)
         if player then
             -- Use black_money item instead of cash for criminal activity
             if loot.cash and loot.cash > 0 then
-                player.Functions.AddItem("black_money", loot.cash)
+                -- Check hourly earnings cap
+                local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(source, loot.cash, 'heist-reward')
+                if success and cappedAmount > 0 then
+                    player.Functions.AddItem("black_money", cappedAmount)
+                    if message then
+                        TriggerClientEvent('QBCore:Notify', source, message, 'inform')
+                    end
+                elseif not success then
+                    TriggerClientEvent('QBCore:Notify', source, message or 'You have reached your hourly earnings limit', 'error')
+                end
             end
             if loot.markedBills and loot.markedBills > 0 then
                 player.Functions.AddItem("markedbills", loot.markedBills)
@@ -304,7 +313,16 @@ local function giveRewards(source, loot)
         if xPlayer then
             -- Use black_money item instead of cash for criminal activity
             if loot.cash and loot.cash > 0 then
-                xPlayer.addInventoryItem("black_money", loot.cash)
+                -- Check hourly earnings cap
+                local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(source, loot.cash, 'heist-reward')
+                if success and cappedAmount > 0 then
+                    xPlayer.addInventoryItem("black_money", cappedAmount)
+                    if message then
+                        TriggerClientEvent('esx:showNotification', source, message)
+                    end
+                elseif not success then
+                    TriggerClientEvent('esx:showNotification', source, message or 'You have reached your hourly earnings limit')
+                end
             end
             if loot.markedBills and loot.markedBills > 0 then
                 xPlayer.addInventoryItem("markedbills", loot.markedBills)

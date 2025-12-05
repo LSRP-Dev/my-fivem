@@ -52,14 +52,15 @@ end)
 RegisterNetEvent('kt-deliveries:riceviPagamento')
 AddEventHandler('kt-deliveries:riceviPagamento', function(amount)
     local xPlayer = nil
+    local src = source
 
     -- Fetch the player object based on the framework
     if Config.Framework == 'qbcore' or Config.Framework == 'qbox' then
-        xPlayer = QBCore.Functions.GetPlayer(source)
+        xPlayer = QBCore.Functions.GetPlayer(src)
     elseif Config.Framework == 'esx' or Config.Framework == 'ox' then
-        xPlayer = ESX.GetPlayerFromId(source)
+        xPlayer = ESX.GetPlayerFromId(src)
     elseif Config.Framework == 'nd' then
-        xPlayer = NDCore.Functions.GetPlayer(source)
+        xPlayer = NDCore.Functions.GetPlayer(src)
     end
 
     if not xPlayer then return end
@@ -67,12 +68,37 @@ AddEventHandler('kt-deliveries:riceviPagamento', function(amount)
     -- Validate the amount within expected bounds
     amount = tonumber(amount)
     if amount and amount > 0 and amount <= Config.RewardMax then
-        if Config.Framework == 'qbcore' or Config.Framework == 'qbox' then
-            xPlayer.Functions.AddMoney('cash', amount)
-        elseif Config.Framework == 'esx' or Config.Framework == 'ox' then
-            xPlayer.addMoney(amount)
-        elseif Config.Framework == 'nd' then
-            xPlayer.addCurrency('cash', amount)
+        -- Check hourly earnings cap
+        local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(src, amount, 'delivery-job')
+        if not success then
+            if Config.Framework == 'qbcore' or Config.Framework == 'qbox' then
+                QBCore.Functions.Notify(src, message or 'You have reached your hourly earnings limit', 'error')
+            elseif Config.Framework == 'esx' or Config.Framework == 'ox' then
+                TriggerClientEvent('esx:showNotification', src, message or 'You have reached your hourly earnings limit')
+            elseif Config.Framework == 'nd' then
+                NDCore.Functions.Notify(src, message or 'You have reached your hourly earnings limit', 'error')
+            end
+            return
+        end
+        
+        if cappedAmount > 0 then
+            if Config.Framework == 'qbcore' or Config.Framework == 'qbox' then
+                xPlayer.Functions.AddMoney('cash', cappedAmount)
+            elseif Config.Framework == 'esx' or Config.Framework == 'ox' then
+                xPlayer.addMoney(cappedAmount)
+            elseif Config.Framework == 'nd' then
+                xPlayer.addCurrency('cash', cappedAmount)
+            end
+            
+            if message then
+                if Config.Framework == 'qbcore' or Config.Framework == 'qbox' then
+                    QBCore.Functions.Notify(src, message, 'inform')
+                elseif Config.Framework == 'esx' or Config.Framework == 'ox' then
+                    TriggerClientEvent('esx:showNotification', src, message)
+                elseif Config.Framework == 'nd' then
+                    NDCore.Functions.Notify(src, message, 'inform')
+                end
+            end
         end
     else
         print(('kt-deliveries: Payment failed for %s: invalid amount (%s)'):format(xPlayer.getName(), tostring(amount)))

@@ -1,5 +1,7 @@
 return {
     commissionRate = 0.1, -- Percent that goes to sales person from a full car sale 10%
+    maxCommissionPerSale = 2000, -- Maximum commission per sale (caps at $2k even if 10% is higher)
+    minTimeBetweenSales = 360, -- 6 minutes between sales (seconds)
     finance = {
         paymentWarning = 10, -- time in minutes that player has to make payment before repo
         paymentInterval = 24, -- time in hours between payment being due

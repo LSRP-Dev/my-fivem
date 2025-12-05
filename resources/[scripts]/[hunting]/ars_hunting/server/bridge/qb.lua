@@ -9,10 +9,36 @@ function framework.addItems(data)
 
     if type(data.items) == "table" then
         for _, item in pairs(data.items) do
-            xPlayer.Functions.AddItem(item.item, (item?.quantity or 1))
+            if item.item == "money" then
+                -- Check hourly earnings cap for money rewards
+                local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(data.target, item.quantity, 'hunting-mission')
+                if success and cappedAmount > 0 then
+                    xPlayer.Functions.AddMoney('cash', cappedAmount)
+                    if message then
+                        TriggerClientEvent('QBCore:Notify', data.target, message, 'inform')
+                    end
+                elseif not success then
+                    TriggerClientEvent('QBCore:Notify', data.target, message or 'You have reached your hourly earnings limit', 'error')
+                end
+            else
+                xPlayer.Functions.AddItem(item.item, (item?.quantity or 1))
+            end
         end
     else
-        xPlayer.Functions.AddItem(data.items, 1)
+        if data.items == "money" then
+            -- Check hourly earnings cap for money rewards
+            local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(data.target, 1, 'hunting-mission')
+            if success and cappedAmount > 0 then
+                xPlayer.Functions.AddMoney('cash', cappedAmount)
+                if message then
+                    TriggerClientEvent('QBCore:Notify', data.target, message, 'inform')
+                end
+            elseif not success then
+                TriggerClientEvent('QBCore:Notify', data.target, message or 'You have reached your hourly earnings limit', 'error')
+            end
+        else
+            xPlayer.Functions.AddItem(data.items, 1)
+        end
     end
 end
 
@@ -23,7 +49,18 @@ end
 
 function framework.addMoney(data)
     local xPlayer = QBCore.Functions.GetPlayer(data.target)
-    xPlayer.Functions.AddMoney('cash', data.amount)
+    if xPlayer then
+        -- Check hourly earnings cap
+        local success, cappedAmount, message = exports['economy_cap']:CheckAndAddEarnings(data.target, data.amount, 'hunting')
+        if success and cappedAmount > 0 then
+            xPlayer.Functions.AddMoney('cash', cappedAmount)
+            if message then
+                TriggerClientEvent('QBCore:Notify', data.target, message, 'inform')
+            end
+        elseif not success then
+            TriggerClientEvent('QBCore:Notify', data.target, message or 'You have reached your hourly earnings limit', 'error')
+        end
+    end
 end
 
 function framework.removeMoney(data)

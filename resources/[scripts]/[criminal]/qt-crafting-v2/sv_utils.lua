@@ -368,3 +368,53 @@ RegisterNetEvent("qt-crafting-GiveItem", function(data)
     end
     
 end)
+
+-- Handler for placing crafting table from item
+RegisterNetEvent('qt-crafting:placeCraftingTable', function(data)
+    local source = source
+    
+    -- Check if player has the crafting table item
+    local hasItem, count = Core.HasItem(source, 'crafting_table', 1)
+    if not hasItem then
+        TriggerClientEvent('qt-crafting-Notify', source, "You don't have a crafting table item.")
+        return
+    end
+    
+    -- Remove the item from inventory
+    Core.RemoveItem(source, 'crafting_table', 1)
+    
+    -- Generate unique ID for the table
+    local id
+    repeat
+        id = GenerateTableID()
+    until WorkShops[id] == nil
+    
+    -- Create the crafting table with default settings
+    local new_craftable = {
+        id = id,
+        name = data.name or "Crafting Table",
+        model = data.model or Shared.DefaultModel,
+        coords = data.coords,
+        blip = nil, -- No blip by default
+        jobs = {}, -- No job restrictions
+        gangs = {} -- No gang restrictions
+    }
+    
+    WorkShops[id] = new_craftable
+    Recipes[id] = {}
+    
+    UpdateJSON('workshop')
+    UpdateJSON("items")
+    
+    TriggerClientEvent("qt-sendNotify", source, {
+        title = L("main_title"),
+        msg = L("success_create"):format(data.name or "Crafting Table"),
+        type = "success"
+    })
+    
+    LoadData()
+    
+    Wait(500)
+    
+    TriggerClientEvent("qt-crafting:Re:Sync", -1)
+end)

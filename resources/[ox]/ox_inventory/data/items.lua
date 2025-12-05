@@ -6472,4 +6472,15 @@ return {
         description = 'Fresh lemon for serving with fish.',
         client = { image = 'lemon.png' }
     },
+    ['crafting_table'] = {
+        label = 'Crafting Table',
+        weight = 5000,
+        stack = false,
+        close = true,
+        consume = 0,
+        description = 'A portable crafting table that can be placed in the world.',
+        client = {
+            export = 'qt-crafting-v2.useCraftingTable'
+        }
+    },
 }

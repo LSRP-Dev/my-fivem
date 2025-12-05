@@ -429,6 +429,21 @@ end
 
 exports('OpenMenu', OpenCraftMenu)
 
+-- Export for ox_inventory item usage
+exports('useCraftingTable', function(data, slot)
+    local defaultModel = Shared.DefaultModel or "gr_prop_gr_bench_02a"
+    
+    -- Use the existing SetupPOS function to place the table
+    SetupPOS(defaultModel, function(pos)
+        -- Send placement data to server
+        TriggerServerEvent('qt-crafting:placeCraftingTable', {
+            model = defaultModel,
+            coords = pos,
+            name = "Crafting Table"
+        })
+    end)
+end)
+
 QT.AddCommand(Shared.Commands.prefix.."edit", function()
     QT.TriggerServerCall("qt_crafting-CheckPerm", function(access)
         if access then 

@@ -3,6 +3,18 @@ function CreateVeh(modelHash, ...)
     while not HasModelLoaded(modelHash) do Wait(0) end
     local veh = CreateVehicle(modelHash, ...)
     SetModelAsNoLongerNeeded(modelHash)
+    
+    -- Wait for vehicle to exist and be fully loaded
+    while not DoesEntityExist(veh) do
+        Wait(100)
+    end
+    
+    -- Set as mission entity to prevent automatic cleanup
+    SetEntityAsMissionEntity(veh, true, true)
+    
+    -- Ensure vehicle is properly positioned (especially important for planes)
+    SetVehicleOnGroundProperly(veh)
+    
     if (GiveKeys) then 
         GiveKeys(veh)
     end

@@ -5,6 +5,8 @@ description 'Advanced Crafting V2'
 author 'qt-dev'
 version '2.0.0'
 
+dependency 'qt-library'
+
 shared_scripts {
     'shared.lua',
     'shared/framework.lua',

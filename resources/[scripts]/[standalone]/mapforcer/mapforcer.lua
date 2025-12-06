@@ -37,7 +37,8 @@ local maps = {
     'gta5interiors_splitsides',
     'SLBK11_MissionRow',
     'restaurant',
-    'Arcade Bar Interior'
+    'int_arcade',
+    'ipl_arcade'
 
 }
 

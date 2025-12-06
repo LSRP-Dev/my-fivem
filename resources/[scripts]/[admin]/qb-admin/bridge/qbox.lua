@@ -329,9 +329,17 @@ if not IsDuplicityVersion() then
     if not IsDuplicityVersion() then
         lib.callback.register('919-admin:server:GetVehicleInfoFromAdmin', function()
             local ped = PlayerPedId()
-            local veh = GetVehiclePedIsIn(ped, false)
             
-            if veh == 0 or veh == nil then
+            -- First check if ped is in any vehicle
+            if not IsPedInAnyVehicle(ped, false) then
+                return nil
+            end
+            
+            -- Use GetVehiclePedIsUsing for more reliable detection
+            local veh = GetVehiclePedIsUsing(ped)
+            
+            -- Additional validation
+            if veh == 0 or veh == nil or not DoesEntityExist(veh) then
                 return nil
             end
             

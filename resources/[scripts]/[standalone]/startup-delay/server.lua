@@ -35,7 +35,7 @@ local scriptResources = {
     'cardboard-riddles', 'cdn-fuel', 'fivem-brz-fishing-ts', 'informational', 'jpr-shells',
     'kq_lasers', 'ls_minimapfix', 'mana_audio', 'mhacking', 'nu-blackmarket', 'safecracker', 'ultra-voltlab',
     -- Critical dependencies
-    'qt-crafting-v2', 'lc_stores', 'md-drugs',
+    'lc_stores', 'md-drugs',
     -- JPR addons
     'DLCiplLoader', 'jpr-libsss',
 }

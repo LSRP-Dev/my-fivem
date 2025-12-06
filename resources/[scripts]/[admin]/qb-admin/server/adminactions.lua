@@ -555,34 +555,101 @@ end)
 RegisterNetEvent("919-admin:server:SaveCar", function(mods, vehicle, hash, plate, senderId)
     local src = source
     local Player = Compat.GetPlayer(src)
-    local result = MySQL.query.await("SELECT plate FROM `"..Config.DB.VehiclesTable.."` WHERE plate = ?", {plate})
-    if result[1] == nil then
-        MySQL.insert("INSERT INTO `"..Config.DB.VehiclesTable.."` (license, citizenid, vehicle, hash, mods, plate, state) VALUES (?, ?, ?, ?, ?, ?, ?)", {
-            Player.PlayerData.license or Player.getIdentifier(),
-            Player.PlayerData.citizenid or Player.getIdentifier(),
-            vehicle.model,
-            vehicle.hash,
-            json.encode(mods),
-            plate,
-            0
-        })
-        if QBCore then
-            TriggerClientEvent("QBCore:Notify", src, Lang:t("notify.VehicleYours"), "success", 5000)
-        else
-            ESX.GetPlayerFromId(source).showNotification(Lang:t("notify.VehicleYours"))
-        end
+    
+    if not Player then
         if senderId then
-            TriggerEvent("qb-log:server:CreateLog", "adminactions", "Admin Car", "red", "**STAFF MEMBER " .. GetPlayerName(senderId) .. "** has added a " .. vehicle.model .. " (" .. plate .. ") to the garage of " .. GetPlayerName(src), false)
-            TriggerClientEvent("919-admin:client:ShowPanelAlert", senderId, "success", "<strong>"..Lang:t("alerts.success").."</strong> "..Lang:t("alerts.addedVehicle", {value = vehicle.model}))
+            TriggerClientEvent("919-admin:client:ShowPanelAlert", senderId, "danger", "<strong>Error</strong> Player not found.")
+        end
+        return
+    end
+    
+    -- Check if using qbx_vehicles (QBox)
+    if GetResourceState('qbx_vehicles') == 'started' then
+        -- Check if vehicle already exists by plate
+        local existingVehicleId = exports.qbx_vehicles:GetVehicleIdByPlate(plate)
+        
+        if existingVehicleId then
+            -- Vehicle exists, transfer ownership
+            local success, err = exports.qbx_vehicles:SetPlayerVehicleOwner(existingVehicleId, Player.PlayerData.citizenid)
+            if success then
+                if Compat and Compat.Notify then
+                    Compat.Notify(src, Lang:t("notify.VehicleYours"), "success")
+                end
+                if senderId then
+                    TriggerEvent("qb-log:server:CreateLog", "adminactions", "Admin Car", "red", "**STAFF MEMBER " .. GetPlayerName(senderId) .. "** has added a " .. vehicle.model .. " (" .. plate .. ") to the garage of " .. GetPlayerName(src), false)
+                    TriggerClientEvent("919-admin:client:ShowPanelAlert", senderId, "success", "<strong>"..Lang:t("alerts.success").."</strong> "..Lang:t("alerts.addedVehicle", {value = vehicle.model}))
+                end
+            else
+                if senderId then
+                    TriggerClientEvent("919-admin:client:ShowPanelAlert", senderId, "danger", "<strong>Error</strong> " .. tostring(err or "Failed to transfer vehicle."))
+                end
+            end
+        else
+            -- Create new vehicle entry
+            local vehicleId, err = exports.qbx_vehicles:CreatePlayerVehicle({
+                model = vehicle.model,
+                citizenid = Player.PlayerData.citizenid,
+                props = mods,
+            })
+            
+            if vehicleId then
+                -- Update vehicle with jg-advancedgarages required fields
+                if GetResourceState('jg-advancedgarages') == 'started' then
+                    local vehicleData = MySQL.single.await('SELECT garage, state FROM player_vehicles WHERE id = ?', {vehicleId})
+                    local garageId = vehicleData and vehicleData.garage or nil
+                    local inGarage = (vehicleData and vehicleData.state == 1) and 1 or 0
+                    
+                    MySQL.update.await('UPDATE player_vehicles SET job_vehicle = 0, gang_vehicle = 0, garage_id = ?, in_garage = ? WHERE id = ?', {
+                        garageId or '',
+                        inGarage,
+                        vehicleId
+                    })
+                end
+                
+                if Compat and Compat.Notify then
+                    Compat.Notify(src, Lang:t("notify.VehicleYours"), "success")
+                end
+                if senderId then
+                    TriggerEvent("qb-log:server:CreateLog", "adminactions", "Admin Car", "red", "**STAFF MEMBER " .. GetPlayerName(senderId) .. "** has added a " .. vehicle.model .. " (" .. plate .. ") to the garage of " .. GetPlayerName(src), false)
+                    TriggerClientEvent("919-admin:client:ShowPanelAlert", senderId, "success", "<strong>"..Lang:t("alerts.success").."</strong> "..Lang:t("alerts.addedVehicle", {value = vehicle.model}))
+                end
+            else
+                if senderId then
+                    TriggerClientEvent("919-admin:client:ShowPanelAlert", senderId, "danger", "<strong>Error</strong> " .. tostring(err or "Failed to add vehicle to garage."))
+                end
+            end
         end
     else
-        if senderId then
-            TriggerClientEvent("919-admin:client:ShowPanelAlert", senderId, "danger", "<strong>"..Lang:t("alerts.error").."</strong> "..Lang:t("alerts.playerOwnsAlready"))
-        end
-        if QBCore then
-            TriggerClientEvent("QBCore:Notify", src, Lang:t("notify.vehicleAlreadyYours"), "error", 3000)
-        elseif ESX then
-            ESX.GetPlayerFromId(source).showNotification(Lang:t("notify.vehicleAlreadyYours"))
+        -- Fallback to old system for QB-Core (if not using QBox)
+        local result = MySQL.query.await("SELECT plate FROM `"..Config.DB.VehiclesTable.."` WHERE plate = ?", {plate})
+        if result[1] == nil then
+            MySQL.insert("INSERT INTO `"..Config.DB.VehiclesTable.."` (license, citizenid, vehicle, hash, mods, plate, state) VALUES (?, ?, ?, ?, ?, ?, ?)", {
+                Player.PlayerData.license or Player.getIdentifier(),
+                Player.PlayerData.citizenid or Player.getIdentifier(),
+                vehicle.model,
+                vehicle.hash,
+                json.encode(mods),
+                plate,
+                0
+            })
+            if QBCore then
+                TriggerClientEvent("QBCore:Notify", src, Lang:t("notify.VehicleYours"), "success", 5000)
+            else
+                ESX.GetPlayerFromId(source).showNotification(Lang:t("notify.VehicleYours"))
+            end
+            if senderId then
+                TriggerEvent("qb-log:server:CreateLog", "adminactions", "Admin Car", "red", "**STAFF MEMBER " .. GetPlayerName(senderId) .. "** has added a " .. vehicle.model .. " (" .. plate .. ") to the garage of " .. GetPlayerName(src), false)
+                TriggerClientEvent("919-admin:client:ShowPanelAlert", senderId, "success", "<strong>"..Lang:t("alerts.success").."</strong> "..Lang:t("alerts.addedVehicle", {value = vehicle.model}))
+            end
+        else
+            if senderId then
+                TriggerClientEvent("919-admin:client:ShowPanelAlert", senderId, "danger", "<strong>"..Lang:t("alerts.error").."</strong> "..Lang:t("alerts.playerOwnsAlready"))
+            end
+            if QBCore then
+                TriggerClientEvent("QBCore:Notify", src, Lang:t("notify.vehicleAlreadyYours"), "error", 3000)
+            elseif ESX then
+                ESX.GetPlayerFromId(source).showNotification(Lang:t("notify.vehicleAlreadyYours"))
+            end
         end
     end
 end)

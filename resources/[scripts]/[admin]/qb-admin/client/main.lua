@@ -461,20 +461,55 @@ end)
 
 RegisterNetEvent("919-admin:client:SaveCar", function(senderId)
     local ped = PlayerPedId()
-    local veh = GetVehiclePedIsIn(ped)
+    local veh = GetVehiclePedIsIn(ped, false)
 
     if veh ~= nil and veh ~= 0 then
-        local plate = QBCore.Functions.GetPlate(veh)
-        local props = QBCore.Functions.GetVehicleProperties(veh)
+        -- Get plate
+        local plate = GetVehicleNumberPlateText(veh)
+        if plate then
+            plate = plate:gsub("^%s*(.-)%s*$", "%1") -- trim whitespace
+        end
+        
+        -- Get vehicle properties using ox_lib
+        local props = lib.getVehicleProperties(veh)
+        
+        if not props or not props.model then
+            if Compat and Compat.Notify then
+                Compat.Notify(Lang:t("notify.cantStoreVehicle"), "error")
+            else
+                exports.qbx_core:Notify(Lang:t("notify.cantStoreVehicle"), "error")
+            end
+            return
+        end
+        
         local hash = props.model
-        local vehname = GetDisplayNameFromVehicleModel(hash):lower()
-        if QBCore.Shared.Vehicles[vehname] ~= nil and next(QBCore.Shared.Vehicles[vehname]) ~= nil then
-            TriggerServerEvent("919-admin:server:SaveCar", props, QBCore.Shared.Vehicles[vehname], `veh`, plate, senderId)
+        local vehModel = GetEntityModel(veh)
+        
+        -- Get vehicle model name from qbx_core
+        local vehiclesByHash = exports.qbx_core:GetVehiclesByHash()
+        local vehicleData = vehiclesByHash[vehModel]
+        
+        if vehicleData and vehicleData.model then
+            TriggerServerEvent("919-admin:server:SaveCar", props, {model = vehicleData.model, hash = hash}, hash, plate, senderId)
         else
-            QBCore.Functions.Notify(Lang:t("notify.cantStoreVehicle"), "error")
+            -- Fallback: Use display name
+            local displayName = GetDisplayNameFromVehicleModel(vehModel)
+            if displayName and displayName ~= "CARNOTFOUND" then
+                TriggerServerEvent("919-admin:server:SaveCar", props, {model = displayName:lower(), hash = hash}, hash, plate, senderId)
+            else
+                if Compat and Compat.Notify then
+                    Compat.Notify(Lang:t("notify.cantStoreVehicle"), "error")
+                else
+                    exports.qbx_core:Notify(Lang:t("notify.cantStoreVehicle"), "error")
+                end
+            end
         end
     else
-        QBCore.Functions.Notify(Lang:t("notify.notInVehicle"), "error")
+        if Compat and Compat.Notify then
+            Compat.Notify(Lang:t("notify.notInVehicle"), "error")
+        else
+            exports.qbx_core:Notify(Lang:t("notify.notInVehicle"), "error")
+        end
     end
 end)
 

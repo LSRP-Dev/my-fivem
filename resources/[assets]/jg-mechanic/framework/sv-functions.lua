@@ -461,7 +461,12 @@ function Framework.Server.GetSocietyBalance(society, societyType)
   elseif Config.SocietyBanking == "tgg-banking" then
     return exports["tgg-banking"]:GetSocietyAccountMoney(society)
   elseif (Config.Framework == "Qbox" and Config.SocietyBanking == "auto") or Config.SocietyBanking == "Renewed-Banking" then
-    return exports["Renewed-Banking"]:getAccountMoney(society)
+    local balance = exports["Renewed-Banking"]:getAccountMoney(society)
+    -- Handle false/nil returns (account not in cache) by defaulting to 0
+    if balance == false or balance == nil then
+      return 0
+    end
+    return balance or 0
   elseif (Config.Framework == "QBCore" and Config.SocietyBanking == "auto") or Config.SocietyBanking == "qb-banking" or Config.SocietyBanking == "qb-management" then
     if Config.SocietyBanking == "qb-banking" or usingNewQBBanking then
       return exports["qb-banking"]:GetAccountBalance(society)
